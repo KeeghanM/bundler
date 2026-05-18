@@ -165,6 +165,9 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
   const [excludedCollectionIds, setExcludedCollectionIds] = useState(
     joinValues(rule?.excludedCollectionIds ?? []),
   );
+  const [showOnAllValid, setShowOnAllValid] = useState(
+    rule ? (rule.triggerProductIds.length === 0 && rule.triggerCollectionIds.length === 0) : true
+  );
   const [groups, setGroups] = useState<GroupDraft[]>(
     rule?.groups.length ? rule.groups.map(groupToDraft) : [emptyGroup(1), emptyGroup(2)],
   );
@@ -173,8 +176,8 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
     title,
     description,
     status,
-    triggerProductIds: splitValues(triggerProductIds),
-    triggerCollectionIds: splitValues(triggerCollectionIds),
+    triggerProductIds: showOnAllValid ? [] : splitValues(triggerProductIds),
+    triggerCollectionIds: showOnAllValid ? [] : splitValues(triggerCollectionIds),
     groups: groups.flatMap((group) => {
       const parsed = draftToGroup(group);
       return parsed ? [parsed] : [];
@@ -217,6 +220,22 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
         };
       }),
     );
+  };
+
+  const handleResourcePicker = async (type: "product" | "collection", current: string, setter: (val: string) => void) => {
+    // @ts-ignore
+    if (typeof window !== "undefined" && window.shopify) {
+      // @ts-ignore
+      const selected = await window.shopify.resourcePicker({ type, action: "select", multiple: true });
+      if (selected && selected.length > 0) {
+        const ids = selected.map((item: any) => item.id);
+        const currentIds = current.split(",").map(s => s.trim()).filter(Boolean);
+        const newIds = Array.from(new Set([...currentIds, ...ids]));
+        setter(newIds.join(", "));
+      }
+    } else {
+      alert("Resource picker is only available inside the Shopify Admin");
+    }
   };
 
   return (
@@ -430,16 +449,32 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
                     </label>
                     <label style={fieldStyle}>
                       <span style={labelStyle}>Sources</span>
-                      <input
-                        value={eligibility.sourceIds}
-                        onChange={(event) =>
-                          updateEligibility(group.id, eligibility.id, {
-                            sourceIds: event.target.value,
-                          })
-                        }
-                        style={inputStyle}
-                        placeholder="Comma-separated GIDs or SKUs"
-                      />
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <input
+                          value={eligibility.sourceIds}
+                          onChange={(event) =>
+                            updateEligibility(group.id, eligibility.id, {
+                              sourceIds: event.target.value,
+                            })
+                          }
+                          style={inputStyle}
+                          placeholder="Comma-separated GIDs or SKUs"
+                        />
+                        {eligibility.type !== "sku" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleResourcePicker(
+                                eligibility.type,
+                                eligibility.sourceIds,
+                                (val) => updateEligibility(group.id, eligibility.id, { sourceIds: val })
+                              )
+                            }
+                          >
+                            Browse
+                          </button>
+                        )}
+                      </div>
                     </label>
                     <label style={fieldStyle}>
                       <span style={labelStyle}>Variant IDs</span>
@@ -510,44 +545,74 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
       </s-section>
 
       <s-section heading="Display and exclusions">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Trigger products</span>
-            <input
-              value={triggerProductIds}
-              onChange={(event) => setTriggerProductIds(event.target.value)}
-              style={inputStyle}
-              placeholder="Optional product GIDs for widget display"
-            />
+        <s-stack direction="block" gap="base">
+          <label style={{ ...fieldStyle, alignContent: "end" }}>
+            <span>
+              <input
+                type="checkbox"
+                checked={showOnAllValid}
+                onChange={(event) => setShowOnAllValid(event.target.checked)}
+              />{" "}
+              Show on all valid products (automatically infers triggers from required groups)
+            </span>
           </label>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Trigger collections</span>
-            <input
-              value={triggerCollectionIds}
-              onChange={(event) => setTriggerCollectionIds(event.target.value)}
-              style={inputStyle}
-              placeholder="Optional collection GIDs for widget display"
-            />
-          </label>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Excluded products</span>
-            <input
-              value={excludedProductIds}
-              onChange={(event) => setExcludedProductIds(event.target.value)}
-              style={inputStyle}
-              placeholder="Optional product GIDs"
-            />
-          </label>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Excluded collections</span>
-            <input
-              value={excludedCollectionIds}
-              onChange={(event) => setExcludedCollectionIds(event.target.value)}
-              style={inputStyle}
-              placeholder="Optional collection GIDs"
-            />
-          </label>
-        </div>
+
+          {!showOnAllValid && (
+            <div style={{ display: "grid", gap: "1rem" }}>
+              <label style={fieldStyle}>
+                <span style={labelStyle}>Trigger products</span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    value={triggerProductIds}
+                    onChange={(event) => setTriggerProductIds(event.target.value)}
+                    style={inputStyle}
+                    placeholder="Optional product GIDs for widget display"
+                  />
+                  <button type="button" onClick={() => handleResourcePicker('product', triggerProductIds, setTriggerProductIds)}>Browse</button>
+                </div>
+              </label>
+              <label style={fieldStyle}>
+                <span style={labelStyle}>Trigger collections</span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    value={triggerCollectionIds}
+                    onChange={(event) => setTriggerCollectionIds(event.target.value)}
+                    style={inputStyle}
+                    placeholder="Optional collection GIDs for widget display"
+                  />
+                  <button type="button" onClick={() => handleResourcePicker('collection', triggerCollectionIds, setTriggerCollectionIds)}>Browse</button>
+                </div>
+              </label>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <label style={fieldStyle}>
+              <span style={labelStyle}>Excluded products</span>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  value={excludedProductIds}
+                  onChange={(event) => setExcludedProductIds(event.target.value)}
+                  style={inputStyle}
+                  placeholder="Optional product GIDs"
+                />
+                <button type="button" onClick={() => handleResourcePicker('product', excludedProductIds, setExcludedProductIds)}>Browse</button>
+              </div>
+            </label>
+            <label style={fieldStyle}>
+              <span style={labelStyle}>Excluded collections</span>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  value={excludedCollectionIds}
+                  onChange={(event) => setExcludedCollectionIds(event.target.value)}
+                  style={inputStyle}
+                  placeholder="Optional collection GIDs"
+                />
+                <button type="button" onClick={() => handleResourcePicker('collection', excludedCollectionIds, setExcludedCollectionIds)}>Browse</button>
+              </div>
+            </label>
+          </div>
+        </s-stack>
       </s-section>
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
