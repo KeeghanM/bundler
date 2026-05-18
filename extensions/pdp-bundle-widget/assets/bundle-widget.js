@@ -16,11 +16,15 @@
 
   const formatDiscount = (discount, context) => {
     if (discount.type === "percentage") {
-      const template = context.discountPercentageText || "{discount}% off qualifying bundle items";
-      return template.replace("{discount}", discount.value);
+      const template = context.discountPercentageText !== undefined && context.discountPercentageText !== null 
+        ? context.discountPercentageText 
+        : "{discount}% off qualifying bundle items";
+      return template ? template.replace("{discount}", discount.value) : "";
     }
-    const template = context.discountFixedText || "{discount} off qualifying bundle items";
-    return template.replace("{discount}", discount.value);
+    const template = context.discountFixedText !== undefined && context.discountFixedText !== null
+      ? context.discountFixedText 
+      : "{discount} off qualifying bundle items";
+    return template ? template.replace("{discount}", discount.value) : "";
   };
 
   
@@ -130,20 +134,27 @@
     card.className = "bundler-widget__card";
     
     let html = `
-      <p class="bundler-widget__eyebrow">${escapeHtml(context.eyebrow)}</p>
+      ${context.eyebrow ? `<p class="bundler-widget__eyebrow">${escapeHtml(context.eyebrow)}</p>` : ""}
       <h3 class="bundler-widget__title">${escapeHtml(rule.title)}</h3>
       ${rule.description ? `<p class="bundler-widget__description">${escapeHtml(rule.description)}</p>` : ""}
-      <p class="bundler-widget__discount">${escapeHtml(formatDiscount(rule.discount, context))}</p>
     `;
+    const discountText = formatDiscount(rule.discount, context);
+    if (discountText) {
+      html += `<p class="bundler-widget__discount">${escapeHtml(discountText)}</p>`;
+    }
 
     if (missingGroups.length === 0) {
-      const unlockedText = (context.unlockedText || "{title} offers unlocked!").replace("{title}", rule.title);
-      html += `<p class="bundler-widget__hint">${escapeHtml(unlockedText)}</p>`;
+      const unlockedTpl = context.unlockedText !== undefined && context.unlockedText !== null ? context.unlockedText : "{title} offers unlocked!";
+      if (unlockedTpl) {
+        html += `<p class="bundler-widget__hint">${escapeHtml(unlockedTpl.replace("{title}", rule.title))}</p>`;
+      }
     } else {
       if (selectedGroups.length > 0) {
         const groupsString = selectedGroups.map((g) => g.title).join(", ");
-        const currentProductText = (context.currentProductText || "Current product selected for {groups}.").replace("{groups}", groupsString);
-        html += `<p class="bundler-widget__hint">${escapeHtml(currentProductText)}</p>`;
+        const currentProdTpl = context.currentProductText !== undefined && context.currentProductText !== null ? context.currentProductText : "Current product selected for {groups}.";
+        if (currentProdTpl) {
+          html += `<p class="bundler-widget__hint">${escapeHtml(currentProdTpl.replace("{groups}", groupsString))}</p>`;
+        }
       }
     }
 
@@ -155,8 +166,10 @@
       html += `<button class="bundler-widget__button" type="button">${escapeHtml(context.buttonText)}</button>`;
     } else if (mode === "message_only" && missingGroups.length > 0) {
       const msgs = missingGroups.map(g => `${g.missingQuantity} from ${g.title}`).join(" and ");
-      const addToUnlockText = (context.addToUnlockText || "Add {missing} to unlock.").replace("{missing}", msgs);
-      html += `<p class="bundler-widget__hint">${escapeHtml(addToUnlockText)}</p>`;
+      const addToUnlockTpl = context.addToUnlockText !== undefined && context.addToUnlockText !== null ? context.addToUnlockText : "Add {missing} to unlock.";
+      if (addToUnlockTpl) {
+        html += `<p class="bundler-widget__hint">${escapeHtml(addToUnlockTpl.replace("{missing}", msgs))}</p>`;
+      }
     }
 
     html += `<p class="bundler-widget__status" role="status"></p>`;
@@ -272,7 +285,7 @@
     if (button) {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        status.textContent = context.loadingText || "Adding bundle...";
+        status.textContent = context.loadingText !== undefined ? context.loadingText : "Adding bundle...";
 
         try {
           await addBundleToCart(card, rule, context);
@@ -299,9 +312,9 @@
       sku: block.dataset.sku,
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
       mode: block.dataset.mode || "dropdowns",
-      customCardHtml: block.dataset.customCardHtml || "",
-      eyebrow: block.dataset.eyebrow || "Bundle offer",
-      buttonText: block.dataset.buttonText || "Add bundle to cart",
+      customCardHtml: block.dataset.customCardHtml,
+      eyebrow: block.dataset.eyebrow,
+      buttonText: block.dataset.buttonText !== undefined ? block.dataset.buttonText : "Add bundle to cart",
       currentProductText: block.dataset.currentProductText,
       addToUnlockText: block.dataset.addToUnlockText,
       unlockedText: block.dataset.unlockedText,

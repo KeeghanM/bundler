@@ -87,7 +87,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
           ... on Product {
             title
             featuredImage { url }
-            variants(first: 5) {
+            variants(first: 1) {
               nodes {
                 id
                 title
@@ -126,7 +126,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
               nodes {
                 title
                 featuredImage { url }
-                variants(first: 5) {
+                variants(first: 1) {
                   nodes {
                     id
                     title
