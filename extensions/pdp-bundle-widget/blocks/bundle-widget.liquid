@@ -17,6 +17,7 @@
   data-unlocked-text="{{ block.settings.unlocked_text | escape }}"
   data-discount-percentage-text="{{ block.settings.discount_percentage_text | escape }}"
   data-discount-fixed-text="{{ block.settings.discount_fixed_text | escape }}"
+  data-success-js-callback="{{ block.settings.success_js_callback | escape }}"
   data-custom-card-html="{{ block.settings.custom_card_html | escape }}"
   data-product-id="gid://shopify/Product/{{ product.id }}"
   data-variant-id="gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}"
@@ -214,6 +215,16 @@
       "id": "custom_css",
       "label": "Custom CSS",
       "info": "Add custom CSS to fully style the bundle widget. Prefix your rules with .bundler-widget to ensure they only affect this block."
+    },
+    {
+      "type": "header",
+      "content": "Advanced: Custom JS Callback"
+    },
+    {
+      "type": "textarea",
+      "id": "success_js_callback",
+      "label": "Success Callback (JavaScript)",
+      "info": "Custom JavaScript to run immediately after the bundle is successfully added to the cart (e.g. `document.querySelector('cart-drawer').open();` or `window.location.href='/cart';`)"
     }
   ]
 }

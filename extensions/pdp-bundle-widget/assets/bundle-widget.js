@@ -128,6 +128,14 @@
       throw new Error("Could not add the bundle to cart. Check selections and try again.");
     }
 
+    // Try to trigger common standard Shopify ajax cart events
+    try {
+      const payload = await response.json();
+      document.documentElement.dispatchEvent(new CustomEvent('cart:build', { bubbles: true }));
+      window.dispatchEvent(new Event('cart:refresh'));
+      document.dispatchEvent(new CustomEvent('ajaxProduct:added', { detail: { product: payload } }));
+    } catch(e) {}
+
     postEvent(context.apiBase, context.shop, rule.id, "add_to_cart_succeeded");
   };
 
@@ -380,6 +388,16 @@
           await addBundleToCart(card, rule, context);
           status.className = "bundler-widget__status bundler-widget__success";
           status.innerHTML = context.successText;
+          
+          if (context.successJsCallback) {
+            try {
+              // Execute custom JS callback if provided
+              const func = new Function(context.successJsCallback);
+              func();
+            } catch (e) {
+              console.error("Bundler Custom JS Error:", e);
+            }
+          }
         } catch (error) {
           status.className = "bundler-widget__status bundler-widget__error";
           status.textContent = error instanceof Error ? error.message : "Could not add the bundle to cart.";
@@ -409,6 +427,7 @@
       currentProductText: block.dataset.currentProductText,
       addToUnlockText: block.dataset.addToUnlockText,
       successText: block.dataset.successText !== undefined && block.dataset.successText !== null ? block.dataset.successText : 'Bundle added. <a href="/cart">View cart</a>',
+      successJsCallback: block.dataset.successJsCallback,
       unlockedText: block.dataset.unlockedText,
       discountPercentageText: block.dataset.discountPercentageText,
       discountFixedText: block.dataset.discountFixedText,
