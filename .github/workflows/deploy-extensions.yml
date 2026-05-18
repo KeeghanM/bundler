@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'extensions/**'
+      - 'shopify.extension.toml'
+      - 'shopify.app.toml'
 
 jobs:
   deploy:
