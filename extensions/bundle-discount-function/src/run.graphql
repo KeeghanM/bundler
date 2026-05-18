@@ -1,0 +1,26 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      quantity
+      bundleCollectionIds: attribute(key: "_bundle_collection_ids") {
+        value
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+          sku
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  discount {
+    metafield(namespace: "bundler", key: "bundle_rules") {
+      jsonValue
+    }
+  }
+}
