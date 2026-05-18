@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { BundleEligibility, BundleGroup, BundleRule } from "../lib/bundle-types";
 
 type EligibilityDraft = {
@@ -140,6 +140,14 @@ const labelStyle = {
 } as const;
 
 export default function BundleRuleForm({ rule, errors = [], submitLabel }: BundleRuleFormProps) {
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (errors.length > 0 && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [errors]);
+
   const [title, setTitle] = useState(rule?.title ?? "");
   const [description, setDescription] = useState(rule?.description ?? "");
   const [status, setStatus] = useState<"draft" | "active">(rule?.status ?? "draft");
@@ -241,13 +249,15 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
   return (
     <s-stack direction="block" gap="base">
       {errors.length > 0 && (
-        <s-section heading="Fix these issues">
-          <s-unordered-list>
-            {errors.map((error) => (
-              <s-list-item key={error}>{error}</s-list-item>
-            ))}
-          </s-unordered-list>
-        </s-section>
+        <div ref={errorRef} style={{ scrollMarginTop: "2rem" }}>
+          <s-section heading="Fix these issues">
+            <s-unordered-list>
+              {errors.map((error) => (
+                <s-list-item key={error}>{error}</s-list-item>
+              ))}
+            </s-unordered-list>
+          </s-section>
+        </div>
       )}
 
       <input type="hidden" name="payload" value={payload} />
