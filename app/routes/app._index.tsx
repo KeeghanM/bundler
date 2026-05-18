@@ -109,7 +109,12 @@ export default function BundleRulesPage() {
                 border-radius="base"
               >
                 <s-stack direction="block" gap="base">
-                  <s-stack direction="inline" gap="base" align-items="center" style={{ justifyContent: "space-between" }}>
+                  <s-stack
+                    direction="inline"
+                    gap="base"
+                    align-items="center"
+                    style={{ justifyContent: "space-between" }}
+                  >
                     <div>
                       <s-heading>{rule.title}</s-heading>
                       <s-paragraph>
@@ -120,8 +125,14 @@ export default function BundleRulesPage() {
                           : `${rule.discount.value} off`}
                       </s-paragraph>
                     </div>
-                    <s-stack direction="inline" gap="base" align-items="center">
-                      <s-link href={`/app/bundles/${rule.id}`}>Edit</s-link>
+                    <s-stack
+                      direction="inline"
+                      gap="small"
+                      align-items="center"
+                    >
+                      <Link to={`/app/bundles/${rule.id}`}>
+                        <s-button>Edit</s-button>
+                      </Link>
                       <Form method="post">
                         <input type="hidden" name="id" value={rule.id} />
                         <input
@@ -131,14 +142,24 @@ export default function BundleRulesPage() {
                             rule.status === "active" ? "deactivate" : "activate"
                           }
                         />
-                        <s-button type="submit">
+                        <s-button
+                          type="submit"
+                          variant="secondary"
+                          tone="neutral"
+                        >
                           {rule.status === "active" ? "Deactivate" : "Activate"}
                         </s-button>
                       </Form>
                       <Form method="post">
                         <input type="hidden" name="id" value={rule.id} />
                         <input type="hidden" name="intent" value="delete" />
-                        <s-button type="submit" variant="tertiary" tone="critical">Delete</s-button>
+                        <s-button
+                          type="submit"
+                          variant="primary"
+                          tone="critical"
+                        >
+                          Delete
+                        </s-button>
                       </Form>
                     </s-stack>
                   </s-stack>
