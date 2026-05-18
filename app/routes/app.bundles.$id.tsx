@@ -63,7 +63,7 @@ export default function EditBundleRulePage() {
       <s-section slot="aside" heading="Danger zone">
         <Form method="post">
           <input type="hidden" name="intent" value="delete" />
-          <button type="submit">Delete bundle rule</button>
+          <s-button variant="primary" tone="critical" type="submit">Delete bundle rule</s-button>
         </Form>
       </s-section>
     </s-page>

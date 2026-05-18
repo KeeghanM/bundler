@@ -120,24 +120,11 @@ const draftToGroup = (draft: GroupDraft): BundleGroup | undefined => {
   };
 };
 
-const fieldStyle = {
-  display: "grid",
-  gap: "0.35rem",
-} as const;
 
-const inputStyle = {
-  border: "1px solid #c9cccf",
-  borderRadius: "0.5rem",
-  font: "inherit",
-  padding: "0.7rem 0.8rem",
-  width: "100%",
-  boxSizing: "border-box",
-} as const;
 
-const labelStyle = {
-  fontSize: "0.85rem",
-  fontWeight: 650,
-} as const;
+
+
+
 
 export default function BundleRuleForm({ rule, errors = [], submitLabel }: BundleRuleFormProps) {
   const errorRef = useRef<HTMLDivElement>(null);
@@ -263,216 +250,158 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
       <input type="hidden" name="payload" value={payload} />
 
       <s-section heading="Bundle details">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Bundle name</span>
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              style={inputStyle}
+        <s-stack direction="block" gap="base">
+          <s-text-field
+            label="Bundle name"
+            value={title}
+            onInput={(event: any) => setTitle(event.target.value)}
+          />
+
+          <s-text-area
+            label="Description"
+            value={description}
+            onInput={(event: any) => setDescription(event.target.value)}
+            rows={3}
+          />
+
+          <s-grid grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))" gap="base">
+            <s-select
+              label="Status"
+              value={status}
+              onChange={(event: any) =>
+                setStatus(event.target.value === "active" ? "active" : "draft")
+              }
+            >
+              <s-option value="draft">Draft</s-option>
+              <s-option value="active">Active</s-option>
+            </s-select>
+
+            <s-number-field
+              label="Priority"
+              value={String(priority)}
+              onInput={(event: any) => setPriority(Number(event.target.value))}
             />
-          </label>
 
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Description</span>
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={3}
-              style={inputStyle}
+            <s-date-field
+              label="Start date"
+              include-time
+              value={startsAt}
+              onInput={(event: any) => setStartsAt(event.target.value)}
             />
-          </label>
 
-          <div
-            style={{
-              display: "grid",
-              gap: "1rem",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            }}
-          >
-            <label style={fieldStyle}>
-              <span style={labelStyle}>Status</span>
-              <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value === "active" ? "active" : "draft")
-                }
-                style={inputStyle}
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-              </select>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={labelStyle}>Priority</span>
-              <input
-                type="number"
-                value={priority}
-                onChange={(event) => setPriority(Number(event.target.value))}
-                style={inputStyle}
-              />
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={labelStyle}>Start date</span>
-              <input
-                type="datetime-local"
-                value={startsAt}
-                onChange={(event) => setStartsAt(event.target.value)}
-                style={inputStyle}
-              />
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={labelStyle}>End date</span>
-              <input
-                type="datetime-local"
-                value={endsAt}
-                onChange={(event) => setEndsAt(event.target.value)}
-                style={inputStyle}
-              />
-            </label>
-          </div>
-        </div>
+            <s-date-field
+              label="End date"
+              include-time
+              value={endsAt}
+              onInput={(event: any) => setEndsAt(event.target.value)}
+            />
+          </s-grid>
+        </s-stack>
       </s-section>
 
       <s-section heading="Discount">
-        <div
-          style={{
-            display: "grid",
-            gap: "1rem",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          }}
-        >
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Discount type</span>
-            <select
-              value={discountType}
-              onChange={(event) =>
-                setDiscountType(
-                  event.target.value === "fixed_amount" ? "fixed_amount" : "percentage",
-                )
-              }
-              style={inputStyle}
-            >
-              <option value="percentage">Percentage off bundle items</option>
-              <option value="fixed_amount">Fixed amount off bundle items</option>
-            </select>
-          </label>
+        <s-grid grid-template-columns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
+          <s-select
+            label="Discount type"
+            value={discountType}
+            onChange={(event: any) =>
+              setDiscountType(
+                event.target.value === "fixed_amount" ? "fixed_amount" : "percentage",
+              )
+            }
+          >
+            <s-option value="percentage">Percentage off bundle items</s-option>
+            <s-option value="fixed_amount">Fixed amount off bundle items</s-option>
+          </s-select>
 
-          <label style={fieldStyle}>
-            <span style={labelStyle}>Discount value</span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={discountValue}
-              onChange={(event) => setDiscountValue(Number(event.target.value))}
-              style={inputStyle}
-            />
-          </label>
+          <s-number-field
+            label="Discount value"
+            min={0}
+            step={0.01}
+            value={String(discountValue)}
+            onInput={(event: any) => setDiscountValue(Number(event.target.value))}
+          />
 
-          <label style={{ ...fieldStyle, alignContent: "end" }}>
-            <span style={labelStyle}>Multiple applications</span>
-            <span>
-              <input
-                type="checkbox"
-                checked={allowMultipleApplications}
-                onChange={(event) => setAllowMultipleApplications(event.target.checked)}
-              />{" "}
-              Allow multiple qualifying sets per cart
-            </span>
-          </label>
-        </div>
+          <s-checkbox
+            label="Allow multiple qualifying sets per cart"
+            checked={allowMultipleApplications}
+            onChange={(event: any) => setAllowMultipleApplications(event.target.checked)}
+          />
+        </s-grid>
       </s-section>
 
       <s-section heading="Required groups">
         <s-stack direction="block" gap="base">
           {groups.map((group, groupIndex) => (
-            <s-box key={group.id} padding="base" borderWidth="base" borderRadius="base">
-              <div style={{ display: "grid", gap: "1rem" }}>
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "1rem",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  }}
-                >
-                  <label style={fieldStyle}>
-                    <span style={labelStyle}>Group name</span>
-                    <input
-                      value={group.title}
-                      onChange={(event) => updateGroup(group.id, { title: event.target.value })}
-                      style={inputStyle}
-                    />
-                  </label>
-                  <label style={fieldStyle}>
-                    <span style={labelStyle}>Minimum quantity</span>
-                    <input
-                      type="number"
-                      min="1"
-                      value={group.minQuantity}
-                      onChange={(event) =>
-                        updateGroup(group.id, { minQuantity: Number(event.target.value) })
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-                  <label style={fieldStyle}>
-                    <span style={labelStyle}>Maximum quantity</span>
-                    <input
-                      value={group.maxQuantity}
-                      onChange={(event) =>
-                        updateGroup(group.id, { maxQuantity: event.target.value })
-                      }
-                      style={inputStyle}
-                      placeholder="Optional"
-                    />
-                  </label>
-                </div>
+            <s-box key={group.id} padding="base" border="base" border-radius="base">
+              <s-stack direction="block" gap="base">
+                <s-grid grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))" gap="base">
+                  <s-text-field
+                    label="Group name"
+                    value={group.title}
+                    onInput={(event: any) => updateGroup(group.id, { title: event.target.value })}
+                  />
+                  <s-number-field
+                    label="Minimum quantity"
+                    min={1}
+                    value={String(group.minQuantity)}
+                    onInput={(event: any) =>
+                      updateGroup(group.id, { minQuantity: Number(event.target.value) })
+                    }
+                  />
+                  <s-text-field
+                    label="Maximum quantity"
+                    value={group.maxQuantity}
+                    onInput={(event: any) =>
+                      updateGroup(group.id, { maxQuantity: event.target.value })
+                    }
+                    placeholder="Optional"
+                  />
+                </s-grid>
 
                 {group.eligibility.map((eligibility) => (
-                  <div
-                    key={eligibility.id}
-                    style={{
-                      display: "grid",
-                      gap: "0.75rem",
-                      gridTemplateColumns: "minmax(140px, 0.6fr) 1fr 1fr auto",
-                    }}
-                  >
-                    <label style={fieldStyle}>
-                      <span style={labelStyle}>Source type</span>
-                      <select
-                        value={eligibility.type}
-                        onChange={(event) =>
-                          updateEligibility(group.id, eligibility.id, {
-                            type: event.target.value as EligibilityDraft["type"],
-                          })
-                        }
-                        style={inputStyle}
-                      >
-                        <option value="collection">Collection IDs</option>
-                        <option value="product">Product IDs</option>
-                        <option value="sku">SKUs</option>
-                      </select>
-                    </label>
-                    <label style={fieldStyle}>
-                      <span style={labelStyle}>Sources</span>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        <input
+                  <s-box key={eligibility.id} padding="base" background="subdued" border-radius="base">
+                    <s-stack direction="block" gap="base">
+                      <s-grid grid-template-columns="repeat(auto-fit, minmax(150px, 1fr))" gap="base">
+                        <s-select
+                          label="Source type"
+                          value={eligibility.type}
+                          onChange={(event: any) =>
+                            updateEligibility(group.id, eligibility.id, {
+                              type: event.target.value as EligibilityDraft["type"],
+                            })
+                          }
+                        >
+                          <s-option value="collection">Collection IDs</s-option>
+                          <s-option value="product">Product IDs</s-option>
+                          <s-option value="sku">SKUs</s-option>
+                        </s-select>
+                        <s-text-field
+                          label="Sources"
                           value={eligibility.sourceIds}
-                          onChange={(event) =>
+                          onInput={(event: any) =>
                             updateEligibility(group.id, eligibility.id, {
                               sourceIds: event.target.value,
                             })
                           }
-                          style={inputStyle}
                           placeholder="Comma-separated GIDs or SKUs"
                         />
+                        <s-text-field
+                          label="Variant IDs"
+                          disabled={eligibility.type !== "product"}
+                          value={eligibility.variantIds}
+                          onInput={(event: any) =>
+                            updateEligibility(group.id, eligibility.id, {
+                              variantIds: event.target.value,
+                            })
+                          }
+                          placeholder="Optional for product sources"
+                        />
+                      </s-grid>
+                      <s-stack direction="inline" gap="base" align-items="center">
                         {eligibility.type !== "sku" && (
-                          <button
-                            type="button"
+                          <s-button
+                            variant="secondary"
                             onClick={() =>
                               handleResourcePicker(
                                 eligibility.type,
@@ -481,44 +410,31 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
                               )
                             }
                           >
-                            Browse
-                          </button>
+                            Browse sources
+                          </s-button>
                         )}
-                      </div>
-                    </label>
-                    <label style={fieldStyle}>
-                      <span style={labelStyle}>Variant IDs</span>
-                      <input
-                        disabled={eligibility.type !== "product"}
-                        value={eligibility.variantIds}
-                        onChange={(event) =>
-                          updateEligibility(group.id, eligibility.id, {
-                            variantIds: event.target.value,
-                          })
-                        }
-                        style={inputStyle}
-                        placeholder="Optional for product sources"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateGroup(group.id, {
-                          eligibility: group.eligibility.filter(
-                            (item) => item.id !== eligibility.id,
-                          ),
-                        })
-                      }
-                      disabled={group.eligibility.length === 1}
-                    >
-                      Remove
-                    </button>
-                  </div>
+                        <s-button
+                          variant="tertiary"
+                          tone="critical"
+                          onClick={() =>
+                            updateGroup(group.id, {
+                              eligibility: group.eligibility.filter(
+                                (item) => item.id !== eligibility.id,
+                              ),
+                            })
+                          }
+                          disabled={group.eligibility.length === 1}
+                        >
+                          Remove rule
+                        </s-button>
+                      </s-stack>
+                    </s-stack>
+                  </s-box>
                 ))}
 
-                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
+                <s-stack direction="inline" gap="base">
+                  <s-button
+                    variant="secondary"
                     onClick={() =>
                       updateGroup(group.id, {
                         eligibility: [...group.eligibility, emptyEligibility()],
@@ -526,9 +442,10 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
                     }
                   >
                     Add source rule
-                  </button>
-                  <button
-                    type="button"
+                  </s-button>
+                  <s-button
+                    variant="tertiary"
+                    tone="critical"
                     onClick={() =>
                       setGroups((currentGroups) =>
                         currentGroups.filter((item) => item.id !== group.id),
@@ -537,98 +454,84 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
                     disabled={groups.length <= 2}
                   >
                     Remove group {groupIndex + 1}
-                  </button>
-                </div>
-              </div>
+                  </s-button>
+                </s-stack>
+              </s-stack>
             </s-box>
           ))}
 
-          <button
-            type="button"
-            onClick={() =>
-              setGroups((currentGroups) => [...currentGroups, emptyGroup(currentGroups.length + 1)])
-            }
-          >
-            Add required group
-          </button>
+          <s-stack direction="inline">
+            <s-button
+              onClick={() =>
+                setGroups((currentGroups) => [...currentGroups, emptyGroup(currentGroups.length + 1)])
+              }
+            >
+              Add required group
+            </s-button>
+          </s-stack>
         </s-stack>
       </s-section>
 
       <s-section heading="Display and exclusions">
         <s-stack direction="block" gap="base">
-          <label style={{ ...fieldStyle, alignContent: "end" }}>
-            <span>
-              <input
-                type="checkbox"
-                checked={showOnAllValid}
-                onChange={(event) => setShowOnAllValid(event.target.checked)}
-              />{" "}
-              Show on all valid products (automatically infers triggers from required groups)
-            </span>
-          </label>
+          <s-checkbox
+            label="Show on all valid products (automatically infers triggers from required groups)"
+            checked={showOnAllValid}
+            onChange={(event: any) => setShowOnAllValid(event.target.checked)}
+          />
 
           {!showOnAllValid && (
-            <div style={{ display: "grid", gap: "1rem" }}>
-              <label style={fieldStyle}>
-                <span style={labelStyle}>Trigger products</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    value={triggerProductIds}
-                    onChange={(event) => setTriggerProductIds(event.target.value)}
-                    style={inputStyle}
-                    placeholder="Optional product GIDs for widget display"
-                  />
-                  <button type="button" onClick={() => handleResourcePicker('product', triggerProductIds, setTriggerProductIds)}>Browse</button>
-                </div>
-              </label>
-              <label style={fieldStyle}>
-                <span style={labelStyle}>Trigger collections</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    value={triggerCollectionIds}
-                    onChange={(event) => setTriggerCollectionIds(event.target.value)}
-                    style={inputStyle}
-                    placeholder="Optional collection GIDs for widget display"
-                  />
-                  <button type="button" onClick={() => handleResourcePicker('collection', triggerCollectionIds, setTriggerCollectionIds)}>Browse</button>
-                </div>
-              </label>
-            </div>
+            <s-grid grid-template-columns="1fr 1fr" gap="base">
+              <s-stack direction="block" gap="base">
+                <s-text-field
+                  label="Trigger products"
+                  value={triggerProductIds}
+                  onInput={(event: any) => setTriggerProductIds(event.target.value)}
+                  placeholder="Optional product GIDs for widget display"
+                />
+                <s-button variant="secondary" onClick={() => handleResourcePicker('product', triggerProductIds, setTriggerProductIds)}>Browse products</s-button>
+              </s-stack>
+              <s-stack direction="block" gap="base">
+                <s-text-field
+                  label="Trigger collections"
+                  value={triggerCollectionIds}
+                  onInput={(event: any) => setTriggerCollectionIds(event.target.value)}
+                  placeholder="Optional collection GIDs for widget display"
+                />
+                <s-button variant="secondary" onClick={() => handleResourcePicker('collection', triggerCollectionIds, setTriggerCollectionIds)}>Browse collections</s-button>
+              </s-stack>
+            </s-grid>
           )}
 
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <label style={fieldStyle}>
-              <span style={labelStyle}>Excluded products</span>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  value={excludedProductIds}
-                  onChange={(event) => setExcludedProductIds(event.target.value)}
-                  style={inputStyle}
-                  placeholder="Optional product GIDs"
-                />
-                <button type="button" onClick={() => handleResourcePicker('product', excludedProductIds, setExcludedProductIds)}>Browse</button>
-              </div>
-            </label>
-            <label style={fieldStyle}>
-              <span style={labelStyle}>Excluded collections</span>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  value={excludedCollectionIds}
-                  onChange={(event) => setExcludedCollectionIds(event.target.value)}
-                  style={inputStyle}
-                  placeholder="Optional collection GIDs"
-                />
-                <button type="button" onClick={() => handleResourcePicker('collection', excludedCollectionIds, setExcludedCollectionIds)}>Browse</button>
-              </div>
-            </label>
-          </div>
+          <s-grid grid-template-columns="1fr 1fr" gap="base">
+            <s-stack direction="block" gap="base">
+              <s-text-field
+                label="Excluded products"
+                value={excludedProductIds}
+                onInput={(event: any) => setExcludedProductIds(event.target.value)}
+                placeholder="Optional product GIDs"
+              />
+              <s-button variant="secondary" onClick={() => handleResourcePicker('product', excludedProductIds, setExcludedProductIds)}>Browse products</s-button>
+            </s-stack>
+            <s-stack direction="block" gap="base">
+              <s-text-field
+                label="Excluded collections"
+                value={excludedCollectionIds}
+                onInput={(event: any) => setExcludedCollectionIds(event.target.value)}
+                placeholder="Optional collection GIDs"
+              />
+              <s-button variant="secondary" onClick={() => handleResourcePicker('collection', excludedCollectionIds, setExcludedCollectionIds)}>Browse collections</s-button>
+            </s-stack>
+          </s-grid>
         </s-stack>
       </s-section>
 
-      <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-        <a href="/app">Cancel</a>
-        <button type="submit">{submitLabel}</button>
-      </div>
+      <s-divider direction="inline" color="base"></s-divider>
+      
+      <s-stack direction="inline" gap="base" align-items="center">
+        <s-button variant="secondary" href="/app">Cancel</s-button>
+        <s-button variant="primary" type="submit">{submitLabel}</s-button>
+      </s-stack>
     </s-stack>
   );
 }

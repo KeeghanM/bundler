@@ -70,15 +70,15 @@ export default function BundleRulesPage() {
 
       <s-section heading="Overview">
         <s-stack direction="inline" gap="base">
-          <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-box padding="base" border="base" border-radius="base">
             <s-heading>{rules.length}</s-heading>
             <s-paragraph>Total rules</s-paragraph>
           </s-box>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-box padding="base" border="base" border-radius="base">
             <s-heading>{activeRules}</s-heading>
             <s-paragraph>Active rules</s-paragraph>
           </s-box>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-box padding="base" border="base" border-radius="base">
             <s-heading>
               {rules.reduce(
                 (total, rule) => total + rule.successfulAddsToCart,
@@ -97,26 +97,19 @@ export default function BundleRulesPage() {
               Create your first mix-and-match bundle to combine collections,
               products, and SKUs.
             </s-paragraph>
-            <Link to="/app/bundles/new">Create a bundle rule</Link>
+            <s-link href="/app/bundles/new">Create a bundle rule</s-link>
           </s-stack>
         ) : (
-          <div style={{ display: "grid", gap: "1rem" }}>
+          <s-stack direction="block" gap="base">
             {rules.map((rule) => (
               <s-box
                 key={rule.id}
                 padding="base"
-                borderWidth="base"
-                borderRadius="base"
+                border="base"
+                border-radius="base"
               >
-                <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "1rem",
-                      flexWrap: "wrap",
-                    }}
-                  >
+                <s-stack direction="block" gap="base">
+                  <s-stack direction="inline" gap="base" align-items="center" style={{ justifyContent: "space-between" }}>
                     <div>
                       <s-heading>{rule.title}</s-heading>
                       <s-paragraph>
@@ -127,15 +120,8 @@ export default function BundleRulesPage() {
                           : `${rule.discount.value} off`}
                       </s-paragraph>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <Link to={`/app/bundles/${rule.id}`}>Edit</Link>
+                    <s-stack direction="inline" gap="base" align-items="center">
+                      <s-link href={`/app/bundles/${rule.id}`}>Edit</s-link>
                       <Form method="post">
                         <input type="hidden" name="id" value={rule.id} />
                         <input
@@ -145,24 +131,24 @@ export default function BundleRulesPage() {
                             rule.status === "active" ? "deactivate" : "activate"
                           }
                         />
-                        <button type="submit">
+                        <s-button type="submit">
                           {rule.status === "active" ? "Deactivate" : "Activate"}
-                        </button>
+                        </s-button>
                       </Form>
                       <Form method="post">
                         <input type="hidden" name="id" value={rule.id} />
                         <input type="hidden" name="intent" value="delete" />
-                        <button type="submit">Delete</button>
+                        <s-button type="submit" variant="tertiary" tone="critical">Delete</s-button>
                       </Form>
-                    </div>
-                  </div>
+                    </s-stack>
+                  </s-stack>
                   <s-paragraph>
                     {rule.groups.map((group) => group.title).join(" + ")}
                   </s-paragraph>
-                </div>
+                </s-stack>
               </s-box>
             ))}
-          </div>
+          </s-stack>
         )}
       </s-section>
 
