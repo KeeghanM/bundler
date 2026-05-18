@@ -18,6 +18,7 @@ type GroupDraft = {
 
 type BundleRuleFormProps = {
   rule?: BundleRule;
+  resourceTitles?: Record<string, string>;
   errors?: string[];
   submitLabel: string;
 };
@@ -126,7 +127,7 @@ const draftToGroup = (draft: GroupDraft): BundleGroup | undefined => {
 
 
 
-export default function BundleRuleForm({ rule, errors = [], submitLabel }: BundleRuleFormProps) {
+export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [], submitLabel }: BundleRuleFormProps) {
   const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,6 +135,17 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
       errorRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [errors]);
+
+  const [titles, setTitles] = useState<Record<string, string>>(resourceTitles || {});
+  
+  const getDisplayValue = (commaSeparatedIds: string) => {
+    return commaSeparatedIds
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(id => titles[id] || id.split('/').pop() || id)
+      .join(", ");
+  };
 
   const [title, setTitle] = useState(rule?.title ?? "");
   const [description, setDescription] = useState(rule?.description ?? "");
@@ -220,13 +232,33 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
   const handleResourcePicker = async (type: "product" | "collection", current: string, setter: (val: string) => void) => {
     // @ts-ignore
     if (typeof window !== "undefined" && window.shopify) {
+      const currentIds = current.split(",").map(s => s.trim()).filter(Boolean);
+      const options: any = { type, action: "select", multiple: true };
+      
+      if (currentIds.length > 0) {
+        options.selectionIds = currentIds.map(id => ({ id }));
+      }
+
       // @ts-ignore
-      const selected = await window.shopify.resourcePicker({ type, action: "select", multiple: true });
-      if (selected && selected.length > 0) {
+      const selected = await window.shopify.resourcePicker(options);
+      if (selected) {
         const ids = selected.map((item: any) => item.id);
-        const currentIds = current.split(",").map(s => s.trim()).filter(Boolean);
-        const newIds = Array.from(new Set([...currentIds, ...ids]));
-        setter(newIds.join(", "));
+        
+        setTitles(prev => {
+          const next = { ...prev };
+          selected.forEach((item: any) => {
+            next[item.id] = item.title;
+            // Also store variant titles if user selected variants
+            if (item.variants) {
+              item.variants.forEach((v: any) => {
+                next[v.id] = `${item.title} - ${v.title}`;
+              });
+            }
+          });
+          return next;
+        });
+
+        setter(ids.join(", "));
       }
     } else {
       alert("Resource picker is only available inside the Shopify Admin");
@@ -376,25 +408,36 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
                           <s-option value="product">Product IDs</s-option>
                           <s-option value="sku">SKUs</s-option>
                         </s-select>
-                        <s-text-field
-                          label="Sources"
-                          value={eligibility.sourceIds}
-                          onInput={(event: any) =>
-                            updateEligibility(group.id, eligibility.id, {
-                              sourceIds: event.target.value,
-                            })
-                          }
-                          placeholder="Comma-separated GIDs or SKUs"
-                        />
+                        {eligibility.type === "sku" ? (
+                          <s-text-field
+                            label="Sources"
+                            value={eligibility.sourceIds}
+                            onInput={(event: any) =>
+                              updateEligibility(group.id, eligibility.id, {
+                                sourceIds: event.target.value,
+                              })
+                            }
+                            placeholder="Comma-separated SKUs"
+                          />
+                        ) : (
+                          <s-text-field
+                            label="Sources"
+                            value={getDisplayValue(eligibility.sourceIds)}
+                            read-only
+                            placeholder="No sources selected"
+                          />
+                        )}
                         <s-text-field
                           label="Variant IDs"
                           disabled={eligibility.type !== "product"}
-                          value={eligibility.variantIds}
-                          onInput={(event: any) =>
+                          value={getDisplayValue(eligibility.variantIds)}
+                          read-only={eligibility.type === "product"}
+                          onInput={(event: any) => {
+                            if (eligibility.type !== "product") return;
                             updateEligibility(group.id, eligibility.id, {
                               variantIds: event.target.value,
-                            })
-                          }
+                            });
+                          }}
                           placeholder="Optional for product sources"
                         />
                       </s-grid>
@@ -485,18 +528,18 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
               <s-stack direction="block" gap="base">
                 <s-text-field
                   label="Trigger products"
-                  value={triggerProductIds}
-                  onInput={(event: any) => setTriggerProductIds(event.target.value)}
-                  placeholder="Optional product GIDs for widget display"
+                  value={getDisplayValue(triggerProductIds)}
+                  read-only
+                  placeholder="Optional product for widget display"
                 />
                 <s-button variant="secondary" onClick={() => handleResourcePicker('product', triggerProductIds, setTriggerProductIds)}>Browse products</s-button>
               </s-stack>
               <s-stack direction="block" gap="base">
                 <s-text-field
                   label="Trigger collections"
-                  value={triggerCollectionIds}
-                  onInput={(event: any) => setTriggerCollectionIds(event.target.value)}
-                  placeholder="Optional collection GIDs for widget display"
+                  value={getDisplayValue(triggerCollectionIds)}
+                  read-only
+                  placeholder="Optional collection for widget display"
                 />
                 <s-button variant="secondary" onClick={() => handleResourcePicker('collection', triggerCollectionIds, setTriggerCollectionIds)}>Browse collections</s-button>
               </s-stack>
@@ -507,18 +550,18 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
             <s-stack direction="block" gap="base">
               <s-text-field
                 label="Excluded products"
-                value={excludedProductIds}
-                onInput={(event: any) => setExcludedProductIds(event.target.value)}
-                placeholder="Optional product GIDs"
+                value={getDisplayValue(excludedProductIds)}
+                read-only
+                placeholder="Optional products"
               />
               <s-button variant="secondary" onClick={() => handleResourcePicker('product', excludedProductIds, setExcludedProductIds)}>Browse products</s-button>
             </s-stack>
             <s-stack direction="block" gap="base">
               <s-text-field
                 label="Excluded collections"
-                value={excludedCollectionIds}
-                onInput={(event: any) => setExcludedCollectionIds(event.target.value)}
-                placeholder="Optional collection GIDs"
+                value={getDisplayValue(excludedCollectionIds)}
+                read-only
+                placeholder="Optional collections"
               />
               <s-button variant="secondary" onClick={() => handleResourcePicker('collection', excludedCollectionIds, setExcludedCollectionIds)}>Browse collections</s-button>
             </s-stack>

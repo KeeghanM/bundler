@@ -9,6 +9,7 @@ import {
   updateBundleRule,
 } from "../models/bundle-rule.server";
 import { authenticate } from "../shopify.server";
+import { resolveResourceTitles } from "../lib/resource-resolver.server";
 
 const getRuleId = (params: LoaderFunctionArgs["params"] | ActionFunctionArgs["params"]): string => {
   if (!params.id) {
@@ -19,14 +20,33 @@ const getRuleId = (params: LoaderFunctionArgs["params"] | ActionFunctionArgs["pa
 };
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const rule = await getBundleRule(session.shop, getRuleId(params));
 
   if (!rule) {
     throw new Response("Bundle rule not found", { status: 404 });
   }
 
-  return { rule };
+  const allIds = new Set<string>();
+  rule.triggerProductIds.forEach(id => allIds.add(id));
+  rule.triggerCollectionIds.forEach(id => allIds.add(id));
+  rule.excludedProductIds.forEach(id => allIds.add(id));
+  rule.excludedCollectionIds.forEach(id => allIds.add(id));
+  
+  rule.groups.forEach(group => {
+    group.eligibility.forEach(e => {
+      if (e.type === 'product') {
+        e.productIds.forEach(id => allIds.add(id));
+        e.variantIds.forEach(id => allIds.add(id));
+      } else if (e.type === 'collection') {
+        e.collectionIds.forEach(id => allIds.add(id));
+      }
+    });
+  });
+
+  const resourceTitles = await resolveResourceTitles(admin, Array.from(allIds));
+
+  return { rule, resourceTitles };
 };
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
@@ -52,13 +72,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 };
 
 export default function EditBundleRulePage() {
-  const { rule } = useLoaderData<typeof loader>();
+  const { rule, resourceTitles } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
     <s-page heading={`Edit ${rule.title}`}>
       <Form method="post">
-        <BundleRuleForm rule={rule} errors={actionData?.errors} submitLabel="Save bundle" />
+        <BundleRuleForm rule={rule} resourceTitles={resourceTitles} errors={actionData?.errors} submitLabel="Save bundle" />
       </Form>
       <s-section slot="aside" heading="Danger zone">
         <Form method="post">
