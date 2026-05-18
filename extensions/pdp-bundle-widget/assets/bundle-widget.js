@@ -189,10 +189,41 @@
             wrapper.className = "bundler-widget__group";
             let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
             selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
+            
             if (group.variants && group.variants.length > 0) {
               const eligible = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
+              
+              const productsMap = new Map();
               eligible.forEach(v => {
-                selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
+                if (!productsMap.has(v.productId)) {
+                  productsMap.set(v.productId, {
+                    productId: v.productId,
+                    productTitle: v.productTitle || v.title,
+                    variants: []
+                  });
+                }
+                productsMap.get(v.productId).variants.push(v);
+              });
+              
+              const eligibleProducts = Array.from(productsMap.values());
+
+              eligibleProducts.forEach(prod => {
+                if (context.showVariantSelector && prod.variants.length > 1) {
+                  selectHtml += `<optgroup label="${escapeHtml(prod.productTitle)}">`;
+                  prod.variants.forEach(v => {
+                    selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
+                  });
+                  selectHtml += `</optgroup>`;
+                } else {
+                  const v = prod.variants[0];
+                  let label = prod.productTitle;
+                  if (!context.showVariantSelector && prod.variants.length > 1) {
+                    label += ` (${context.selectOptionsText})`;
+                  } else if (prod.variants.length === 1 && v.title !== "Default Title") {
+                    label += ` - ${v.title}`;
+                  }
+                  selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(label)}</option>`;
+                }
               });
             }
             selectHtml += `</select>`;
@@ -207,7 +238,6 @@
             wrapper.className = "bundler-widget__carousel-wrapper";
             wrapper.innerHTML = `<span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>`;
             
-            // Hidden input to hold the selected variant for this carousel
             const hiddenInput = document.createElement("input");
             hiddenInput.type = "hidden";
             hiddenInput.setAttribute("data-bundler-variant-input", "true");
@@ -218,47 +248,101 @@
             carousel.className = "bundler-widget__carousel";
             
             if (group.variants && group.variants.length > 0) {
-              const eligible = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
-              eligible.forEach(v => {
+              const eligibleVariants = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
+              
+              const productsMap = new Map();
+              eligibleVariants.forEach(v => {
+                if (!productsMap.has(v.productId)) {
+                  productsMap.set(v.productId, {
+                    productId: v.productId,
+                    productTitle: v.productTitle || v.title,
+                    productImage: v.productImage || v.image,
+                    variants: []
+                  });
+                }
+                productsMap.get(v.productId).variants.push(v);
+              });
+              
+              const eligibleProducts = Array.from(productsMap.values());
+
+              eligibleProducts.forEach(prod => {
                 const item = document.createElement("div");
                 item.className = "bundler-widget__carousel-item";
                 
+                const firstVariant = prod.variants[0];
+                const hasMultipleVariants = prod.variants.length > 1;
+
+                let variantSelectorHtml = "";
+                if (hasMultipleVariants) {
+                  if (context.showVariantSelector) {
+                    variantSelectorHtml = `<select class="bundler-widget__carousel-variant-select">`;
+                    prod.variants.forEach(v => {
+                      variantSelectorHtml += `<option value="${escapeHtml(toNumericId(v.id))}" data-price="${escapeHtml(v.price)}" data-image="${escapeHtml(v.image || prod.productImage || '')}">${escapeHtml(v.title)}</option>`;
+                    });
+                    variantSelectorHtml += `</select>`;
+                  } else {
+                    variantSelectorHtml = `<p class="bundler-widget__carousel-options-text">${escapeHtml(context.selectOptionsText)}</p>`;
+                  }
+                }
+
                 let cardHtml = "";
                 if (context.customCardHtml) {
                   cardHtml = context.customCardHtml
-                    .replace(/{image}/g, `<img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />`)
-                    .replace(/{title}/g, escapeHtml(v.title))
-                    .replace(/{price}/g, getDiscountedPriceHtml(v.price, rule))
-                    .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn">Select</button>`);
+                    .replace(/{image}/g, `<img class="bundler-widget__carousel-image" src="${escapeHtml(firstVariant.image || prod.productImage || '')}" alt="${escapeHtml(prod.productTitle)}" />`)
+                    .replace(/{title}/g, escapeHtml(prod.productTitle))
+                    .replace(/{price}/g, getDiscountedPriceHtml(firstVariant.price, rule))
+                    .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}">Select</button>`);
                 } else {
                   cardHtml = `
-                    <img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />
+                    <img class="bundler-widget__carousel-image" src="${escapeHtml(firstVariant.image || prod.productImage || '')}" alt="${escapeHtml(prod.productTitle)}" />
                     <div class="bundler-widget__carousel-content">
-                      <p class="bundler-widget__carousel-title">${escapeHtml(v.title)}</p>
-                      <p class="bundler-widget__carousel-price">${getDiscountedPriceHtml(v.price, rule)}</p>
-                      <button type="button" class="bundler-widget__carousel-btn">Select</button>
+                      <p class="bundler-widget__carousel-title">${escapeHtml(prod.productTitle)}</p>
+                      <div class="bundler-widget__carousel-price-wrapper">
+                        <p class="bundler-widget__carousel-price">${getDiscountedPriceHtml(firstVariant.price, rule)}</p>
+                      </div>
+                      ${variantSelectorHtml}
+                      <button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}">Select</button>
                     </div>
                   `;
                 }
                 item.innerHTML = cardHtml;
 
+                const selectEl = item.querySelector(".bundler-widget__carousel-variant-select");
                 const btn = item.querySelector(".bundler-widget__carousel-btn");
+                const priceWrapper = item.querySelector(".bundler-widget__carousel-price");
+                const imgEl = item.querySelector(".bundler-widget__carousel-image");
+
+                if (selectEl) {
+                  selectEl.addEventListener("change", () => {
+                    const selectedOption = selectEl.options[selectEl.selectedIndex];
+                    if (btn) btn.setAttribute("data-variant-id", selectedOption.value);
+                    if (priceWrapper) priceWrapper.innerHTML = getDiscountedPriceHtml(selectedOption.getAttribute("data-price"), rule);
+                    if (imgEl && selectedOption.getAttribute("data-image")) {
+                       imgEl.src = selectedOption.getAttribute("data-image");
+                    }
+                    
+                    if (item.classList.contains("is-selected") && hiddenInput) {
+                      hiddenInput.value = toNumericId(selectedOption.value);
+                      hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
+                    }
+                  });
+                }
+
                 if (btn) {
                   btn.addEventListener("click", () => {
-                    // clear others
                     carousel.querySelectorAll(".bundler-widget__carousel-item").forEach(el => el.classList.remove("is-selected"));
                     carousel.querySelectorAll(".bundler-widget__carousel-btn").forEach(el => el.textContent = "Select");
                     
                     item.classList.add("is-selected");
                     btn.textContent = "Selected";
-                    hiddenInput.value = toNumericId(v.id);
+                    hiddenInput.value = toNumericId(btn.getAttribute("data-variant-id"));
                     hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
                   });
                 }
                 
                 carousel.appendChild(item);
               });
-              if (eligible.length === 0) {
+              if (eligibleProducts.length === 0) {
                 carousel.innerHTML = `<p class="bundler-widget__hint">No additional eligible products found.</p>`;
               }
             } else {
@@ -312,6 +396,8 @@
       sku: block.dataset.sku,
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
       mode: block.dataset.mode || "dropdowns",
+      showVariantSelector: block.dataset.showVariantSelector !== "false",
+      selectOptionsText: block.dataset.selectOptionsText !== undefined && block.dataset.selectOptionsText !== null ? block.dataset.selectOptionsText : "Select Options in Basket",
       customCardHtml: block.dataset.customCardHtml,
       eyebrow: block.dataset.eyebrow,
       buttonText: block.dataset.buttonText !== undefined ? block.dataset.buttonText : "Add bundle to cart",

@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "f8fd3069558def889f4067216c6d8aff"
+client_id = "d9200561840ac107f82c6c1b5e2b1b9b"
 name = "bundler"
 application_url = "https://bundler.keeghan.io"
 embedded = true

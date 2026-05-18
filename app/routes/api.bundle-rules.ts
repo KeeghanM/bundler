@@ -87,7 +87,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
           ... on Product {
             title
             featuredImage { url }
-            variants(first: 1) {
+            variants(first: 50) {
               nodes {
                 id
                 title
@@ -126,7 +126,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
               nodes {
                 title
                 featuredImage { url }
-                variants(first: 1) {
+                variants(first: 50) {
                   nodes {
                     id
                     title
@@ -158,9 +158,11 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
   return resultVariants.slice(0, limit).map(v => ({
     id: v.id,
     productId: v.product?.id || null,
-    title: v.product?.title ? `${v.product.title} - ${v.title}` : v.title,
+    title: v.title,
+    productTitle: v.product?.title || '',
     price: v.price,
-    image: v.image?.url || v.product?.featuredImage?.url || null
+    image: v.image?.url || null,
+    productImage: v.product?.featuredImage?.url || null
   }));
 }
 

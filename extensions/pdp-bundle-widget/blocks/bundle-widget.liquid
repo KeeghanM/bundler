@@ -10,6 +10,8 @@
   data-button-text="{{ block.settings.button_text | escape }}"
   data-loading-text="{{ block.settings.loading_text | escape }}"
   data-current-product-text="{{ block.settings.current_product_text | escape }}"
+  data-show-variant-selector="{{ block.settings.show_variant_selector }}"
+  data-select-options-text="{{ block.settings.select_options_text | escape }}"
   data-add-to-unlock-text="{{ block.settings.add_to_unlock_text | escape }}"
   data-unlocked-text="{{ block.settings.unlocked_text | escape }}"
   data-discount-percentage-text="{{ block.settings.discount_percentage_text | escape }}"
@@ -39,6 +41,19 @@
         { "value": "message_only", "label": "Message Only" }
       ],
       "default": "dropdowns"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_variant_selector",
+      "label": "Show Variant Selector",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "select_options_text",
+      "label": "Options Text",
+      "info": "Text shown when the variant selector is off, letting customers know they can pick options later.",
+      "default": "Select Options in Basket"
     },
     {
       "type": "header",

@@ -203,3 +203,21 @@
   background: var(--bundler-btn-bg, rgb(21 93 252));
   color: var(--bundler-btn-text, white);
 }
+
+.bundler-widget__carousel-variant-select {
+  width: 100%;
+  margin: 0.25rem 0;
+  padding: 0.4rem;
+  border: 1px solid var(--bundler-border-color, rgb(221 224 228));
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background-color: white;
+  color: var(--bundler-text, rgb(24 29 39));
+}
+
+.bundler-widget__carousel-options-text {
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
+  margin: 0.25rem 0;
+}
