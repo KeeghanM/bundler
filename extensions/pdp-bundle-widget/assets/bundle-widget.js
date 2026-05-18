@@ -28,6 +28,15 @@
     return new Intl.NumberFormat(undefined, { style: "currency", currency: window.Shopify?.currency?.active || "USD" }).format(amount);
   };
 
+  const getDiscountedPriceHtml = (price, rule) => {
+    if (rule.discount.type === "percentage") {
+      const discounted = price * (1 - (rule.discount.value / 100));
+      return `<s>${formatMoney(price)}</s> <strong>${formatMoney(discounted)}</strong>`;
+    }
+    // For fixed amounts we can't reliably do per-item breakdown as it applies to the bundle
+    return `<strong>${formatMoney(price)}</strong>`;
+  };
+
   const escapeHtml = (value) => {
     const escapeMap = {
       "&": "&amp;",
@@ -206,14 +215,14 @@
                   cardHtml = context.customCardHtml
                     .replace(/{image}/g, `<img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />`)
                     .replace(/{title}/g, escapeHtml(v.title))
-                    .replace(/{price}/g, formatMoney(v.price))
+                    .replace(/{price}/g, getDiscountedPriceHtml(v.price, rule))
                     .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn">Select</button>`);
                 } else {
                   cardHtml = `
                     <img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />
                     <div class="bundler-widget__carousel-content">
                       <p class="bundler-widget__carousel-title">${escapeHtml(v.title)}</p>
-                      <p class="bundler-widget__carousel-price">${formatMoney(v.price)}</p>
+                      <p class="bundler-widget__carousel-price">${getDiscountedPriceHtml(v.price, rule)}</p>
                       <button type="button" class="bundler-widget__carousel-btn">Select</button>
                     </div>
                   `;
