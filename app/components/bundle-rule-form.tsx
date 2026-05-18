@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from "react";
-import type { BundleEligibility, BundleGroup, BundleRule } from "../lib/bundle-types";
+import { useEffect, useRef, useState } from "react";
+import type {
+  BundleEligibility,
+  BundleGroup,
+  BundleRule,
+} from "../lib/bundle-types";
 
 type EligibilityDraft = {
   id: string;
-  type: "collection" | "product" | "sku";
+  type: "collection" | "product";
   sourceIds: string;
   variantIds: string;
 };
@@ -47,7 +51,9 @@ const splitValues = (value: string): string[] => {
     .filter(Boolean);
 };
 
-const eligibilityToDraft = (eligibility: BundleEligibility): EligibilityDraft => {
+const eligibilityToDraft = (
+  eligibility: BundleEligibility,
+): EligibilityDraft => {
   if (eligibility.type === "collection") {
     return {
       id: crypto.randomUUID(),
@@ -65,13 +71,6 @@ const eligibilityToDraft = (eligibility: BundleEligibility): EligibilityDraft =>
       variantIds: joinValues(eligibility.variantIds),
     };
   }
-
-  return {
-    id: crypto.randomUUID(),
-    type: "sku",
-    sourceIds: joinValues(eligibility.skus),
-    variantIds: "",
-  };
 };
 
 const groupToDraft = (group: BundleGroup): GroupDraft => ({
@@ -82,10 +81,14 @@ const groupToDraft = (group: BundleGroup): GroupDraft => ({
   eligibility: group.eligibility.map(eligibilityToDraft),
 });
 
-const draftToEligibility = (draft: EligibilityDraft): BundleEligibility | undefined => {
+const draftToEligibility = (
+  draft: EligibilityDraft,
+): BundleEligibility | undefined => {
   if (draft.type === "collection") {
     const collectionIds = splitValues(draft.sourceIds);
-    return collectionIds.length > 0 ? { type: "collection", collectionIds } : undefined;
+    return collectionIds.length > 0
+      ? { type: "collection", collectionIds }
+      : undefined;
   }
 
   if (draft.type === "product") {
@@ -95,9 +98,6 @@ const draftToEligibility = (draft: EligibilityDraft): BundleEligibility | undefi
       ? { type: "product", productIds, variantIds }
       : undefined;
   }
-
-  const skus = splitValues(draft.sourceIds).map((sku) => sku.toUpperCase());
-  return skus.length > 0 ? { type: "sku", skus } : undefined;
 };
 
 const draftToGroup = (draft: GroupDraft): BundleGroup | undefined => {
@@ -117,17 +117,18 @@ const draftToGroup = (draft: GroupDraft): BundleGroup | undefined => {
     title: draft.title.trim() || "Required group",
     eligibility,
     minQuantity: Math.max(1, Math.floor(draft.minQuantity || 1)),
-    ...(Number.isInteger(maxQuantity) && maxQuantity > 0 ? { maxQuantity } : {}),
+    ...(Number.isInteger(maxQuantity) && maxQuantity > 0
+      ? { maxQuantity }
+      : {}),
   };
 };
 
-
-
-
-
-
-
-export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [], submitLabel }: BundleRuleFormProps) {
+export default function BundleRuleForm({
+  rule,
+  resourceTitles = {},
+  errors = [],
+  submitLabel,
+}: BundleRuleFormProps) {
   const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -136,24 +137,30 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
     }
   }, [errors]);
 
-  const [titles, setTitles] = useState<Record<string, string>>(resourceTitles || {});
-  
+  const [titles, setTitles] = useState<Record<string, string>>(
+    resourceTitles || {},
+  );
+
   const getDisplayValue = (commaSeparatedIds: string) => {
     return commaSeparatedIds
       .split(",")
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean)
-      .map(id => titles[id] || id.split('/').pop() || id)
+      .map((id) => titles[id] || id.split("/").pop() || id)
       .join(", ");
   };
 
   const [title, setTitle] = useState(rule?.title ?? "");
   const [description, setDescription] = useState(rule?.description ?? "");
-  const [status, setStatus] = useState<"draft" | "active">(rule?.status ?? "draft");
-  const [discountType, setDiscountType] = useState<"percentage" | "fixed_amount">(
-    rule?.discount.type ?? "percentage",
+  const [status, setStatus] = useState<"draft" | "active">(
+    rule?.status ?? "draft",
   );
-  const [discountValue, setDiscountValue] = useState(rule?.discount.value ?? 15);
+  const [discountType, setDiscountType] = useState<
+    "percentage" | "fixed_amount"
+  >(rule?.discount.type ?? "percentage");
+  const [discountValue, setDiscountValue] = useState(
+    rule?.discount.value ?? 15,
+  );
   const [allowMultipleApplications, setAllowMultipleApplications] = useState(
     rule?.allowMultipleApplications ?? false,
   );
@@ -173,10 +180,15 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
     joinValues(rule?.excludedCollectionIds ?? []),
   );
   const [showOnAllValid, setShowOnAllValid] = useState(
-    rule ? (rule.triggerProductIds.length === 0 && rule.triggerCollectionIds.length === 0) : true
+    rule
+      ? rule.triggerProductIds.length === 0 &&
+          rule.triggerCollectionIds.length === 0
+      : true,
   );
   const [groups, setGroups] = useState<GroupDraft[]>(
-    rule?.groups.length ? rule.groups.map(groupToDraft) : [emptyGroup(1), emptyGroup(2)],
+    rule?.groups.length
+      ? rule.groups.map(groupToDraft)
+      : [emptyGroup(1), emptyGroup(2)],
   );
 
   const payload = JSON.stringify({
@@ -184,7 +196,9 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
     description,
     status,
     triggerProductIds: showOnAllValid ? [] : splitValues(triggerProductIds),
-    triggerCollectionIds: showOnAllValid ? [] : splitValues(triggerCollectionIds),
+    triggerCollectionIds: showOnAllValid
+      ? []
+      : splitValues(triggerCollectionIds),
     groups: groups.flatMap((group) => {
       const parsed = draftToGroup(group);
       return parsed ? [parsed] : [];
@@ -204,7 +218,9 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
 
   const updateGroup = (id: string, nextGroup: Partial<GroupDraft>) => {
     setGroups((currentGroups) =>
-      currentGroups.map((group) => (group.id === id ? { ...group, ...nextGroup } : group)),
+      currentGroups.map((group) =>
+        group.id === id ? { ...group, ...nextGroup } : group,
+      ),
     );
   };
 
@@ -222,29 +238,38 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
         return {
           ...group,
           eligibility: group.eligibility.map((eligibility) =>
-            eligibility.id === eligibilityId ? { ...eligibility, ...nextEligibility } : eligibility,
+            eligibility.id === eligibilityId
+              ? { ...eligibility, ...nextEligibility }
+              : eligibility,
           ),
         };
       }),
     );
   };
 
-  const handleResourcePicker = async (type: "product" | "collection", current: string, setter: (val: string) => void) => {
-    // @ts-ignore
+  const handleResourcePicker = async (
+    type: "product" | "collection",
+    current: string,
+    setter: (val: string) => void,
+  ) => {
+    // @ts-expect-error - window.shopify is injected by the Shopify Admin when the resource picker is used inside a Shopify Admin page. It is not available in development or preview environments, so we need to guard against it.
     if (typeof window !== "undefined" && window.shopify) {
-      const currentIds = current.split(",").map(s => s.trim()).filter(Boolean);
+      const currentIds = current
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const options: any = { type, action: "select", multiple: true };
-      
+
       if (currentIds.length > 0) {
-        options.selectionIds = currentIds.map(id => ({ id }));
+        options.selectionIds = currentIds.map((id) => ({ id }));
       }
 
-      // @ts-ignore
+      // @ts-expect-error - window.shopify.resourcePicker is a function provided by the Shopify Admin to open the resource picker. It is not available in development or preview environments, so we need to guard against it.
       const selected = await window.shopify.resourcePicker(options);
       if (selected) {
         const ids = selected.map((item: any) => item.id);
-        
-        setTitles(prev => {
+
+        setTitles((prev) => {
           const next = { ...prev };
           selected.forEach((item: any) => {
             next[item.id] = item.title;
@@ -296,7 +321,10 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
             rows={3}
           />
 
-          <s-grid grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))" gap="base">
+          <s-grid
+            grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))"
+            gap="base"
+          >
             <s-select
               label="Status"
               value={status}
@@ -332,18 +360,25 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
       </s-section>
 
       <s-section heading="Discount">
-        <s-grid grid-template-columns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
+        <s-grid
+          grid-template-columns="repeat(auto-fit, minmax(220px, 1fr))"
+          gap="base"
+        >
           <s-select
             label="Discount type"
             value={discountType}
             onChange={(event: any) =>
               setDiscountType(
-                event.target.value === "fixed_amount" ? "fixed_amount" : "percentage",
+                event.target.value === "fixed_amount"
+                  ? "fixed_amount"
+                  : "percentage",
               )
             }
           >
             <s-option value="percentage">Percentage off bundle items</s-option>
-            <s-option value="fixed_amount">Fixed amount off bundle items</s-option>
+            <s-option value="fixed_amount">
+              Fixed amount off bundle items
+            </s-option>
           </s-select>
 
           <s-number-field
@@ -351,13 +386,17 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
             min={0}
             step={0.01}
             value={String(discountValue)}
-            onInput={(event: any) => setDiscountValue(Number(event.target.value))}
+            onInput={(event: any) =>
+              setDiscountValue(Number(event.target.value))
+            }
           />
 
           <s-checkbox
             label="Allow multiple qualifying sets per cart"
             checked={allowMultipleApplications}
-            onChange={(event: any) => setAllowMultipleApplications(event.target.checked)}
+            onChange={(event: any) =>
+              setAllowMultipleApplications(event.target.checked)
+            }
           />
         </s-grid>
       </s-section>
@@ -365,20 +404,32 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
       <s-section heading="Required groups">
         <s-stack direction="block" gap="base">
           {groups.map((group, groupIndex) => (
-            <s-box key={group.id} padding="base" border="base" border-radius="base">
+            <s-box
+              key={group.id}
+              padding="base"
+              border="base"
+              border-radius="base"
+            >
               <s-stack direction="block" gap="base">
-                <s-grid grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))" gap="base">
+                <s-grid
+                  grid-template-columns="repeat(auto-fit, minmax(180px, 1fr))"
+                  gap="base"
+                >
                   <s-text-field
                     label="Group name"
                     value={group.title}
-                    onInput={(event: any) => updateGroup(group.id, { title: event.target.value })}
+                    onInput={(event: any) =>
+                      updateGroup(group.id, { title: event.target.value })
+                    }
                   />
                   <s-number-field
                     label="Minimum quantity"
                     min={1}
                     value={String(group.minQuantity)}
                     onInput={(event: any) =>
-                      updateGroup(group.id, { minQuantity: Number(event.target.value) })
+                      updateGroup(group.id, {
+                        minQuantity: Number(event.target.value),
+                      })
                     }
                   />
                   <s-text-field
@@ -392,41 +443,36 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                 </s-grid>
 
                 {group.eligibility.map((eligibility) => (
-                  <s-box key={eligibility.id} padding="base" background="subdued" border-radius="base">
+                  <s-box
+                    key={eligibility.id}
+                    padding="base"
+                    background="subdued"
+                    border-radius="base"
+                  >
                     <s-stack direction="block" gap="base">
-                      <s-grid grid-template-columns="repeat(auto-fit, minmax(150px, 1fr))" gap="base">
+                      <s-grid
+                        grid-template-columns="repeat(auto-fit, minmax(150px, 1fr))"
+                        gap="base"
+                      >
                         <s-select
                           label="Source type"
                           value={eligibility.type}
                           onChange={(event: any) =>
                             updateEligibility(group.id, eligibility.id, {
-                              type: event.target.value as EligibilityDraft["type"],
+                              type: event.target
+                                .value as EligibilityDraft["type"],
                             })
                           }
                         >
-                          <s-option value="collection">Collection IDs</s-option>
-                          <s-option value="product">Product IDs</s-option>
-                          <s-option value="sku">SKUs</s-option>
+                          <s-option value="collection">Collections</s-option>
+                          <s-option value="product">Products</s-option>
                         </s-select>
-                        {eligibility.type === "sku" ? (
-                          <s-text-field
-                            label="Sources"
-                            value={eligibility.sourceIds}
-                            onInput={(event: any) =>
-                              updateEligibility(group.id, eligibility.id, {
-                                sourceIds: event.target.value,
-                              })
-                            }
-                            placeholder="Comma-separated SKUs"
-                          />
-                        ) : (
-                          <s-text-field
-                            label="Sources"
-                            value={getDisplayValue(eligibility.sourceIds)}
-                            read-only
-                            placeholder="No sources selected"
-                          />
-                        )}
+                        <s-text-field
+                          label="Sources"
+                          value={getDisplayValue(eligibility.sourceIds)}
+                          read-only
+                          placeholder="No sources selected"
+                        />
                         <s-text-field
                           label="Variant IDs"
                           disabled={eligibility.type !== "product"}
@@ -441,21 +487,26 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                           placeholder="Optional for product sources"
                         />
                       </s-grid>
-                      <s-stack direction="inline" gap="base" align-items="center">
-                        {eligibility.type !== "sku" && (
-                          <s-button
-                            variant="secondary"
-                            onClick={() =>
-                              handleResourcePicker(
-                                eligibility.type,
-                                eligibility.sourceIds,
-                                (val) => updateEligibility(group.id, eligibility.id, { sourceIds: val })
-                              )
-                            }
-                          >
-                            Browse sources
-                          </s-button>
-                        )}
+                      <s-stack
+                        direction="inline"
+                        gap="base"
+                        align-items="center"
+                      >
+                        <s-button
+                          variant="secondary"
+                          onClick={() =>
+                            handleResourcePicker(
+                              eligibility.type,
+                              eligibility.sourceIds,
+                              (val) =>
+                                updateEligibility(group.id, eligibility.id, {
+                                  sourceIds: val,
+                                }),
+                            )
+                          }
+                        >
+                          Browse sources
+                        </s-button>
                         <s-button
                           variant="tertiary"
                           tone="critical"
@@ -506,7 +557,10 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
           <s-stack direction="inline">
             <s-button
               onClick={() =>
-                setGroups((currentGroups) => [...currentGroups, emptyGroup(currentGroups.length + 1)])
+                setGroups((currentGroups) => [
+                  ...currentGroups,
+                  emptyGroup(currentGroups.length + 1),
+                ])
               }
             >
               Add required group
@@ -532,7 +586,18 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                   read-only
                   placeholder="Optional product for widget display"
                 />
-                <s-button variant="secondary" onClick={() => handleResourcePicker('product', triggerProductIds, setTriggerProductIds)}>Browse products</s-button>
+                <s-button
+                  variant="secondary"
+                  onClick={() =>
+                    handleResourcePicker(
+                      "product",
+                      triggerProductIds,
+                      setTriggerProductIds,
+                    )
+                  }
+                >
+                  Browse products
+                </s-button>
               </s-stack>
               <s-stack direction="block" gap="base">
                 <s-text-field
@@ -541,7 +606,18 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                   read-only
                   placeholder="Optional collection for widget display"
                 />
-                <s-button variant="secondary" onClick={() => handleResourcePicker('collection', triggerCollectionIds, setTriggerCollectionIds)}>Browse collections</s-button>
+                <s-button
+                  variant="secondary"
+                  onClick={() =>
+                    handleResourcePicker(
+                      "collection",
+                      triggerCollectionIds,
+                      setTriggerCollectionIds,
+                    )
+                  }
+                >
+                  Browse collections
+                </s-button>
               </s-stack>
             </s-grid>
           )}
@@ -554,7 +630,18 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                 read-only
                 placeholder="Optional products"
               />
-              <s-button variant="secondary" onClick={() => handleResourcePicker('product', excludedProductIds, setExcludedProductIds)}>Browse products</s-button>
+              <s-button
+                variant="secondary"
+                onClick={() =>
+                  handleResourcePicker(
+                    "product",
+                    excludedProductIds,
+                    setExcludedProductIds,
+                  )
+                }
+              >
+                Browse products
+              </s-button>
             </s-stack>
             <s-stack direction="block" gap="base">
               <s-text-field
@@ -563,17 +650,32 @@ export default function BundleRuleForm({ rule, resourceTitles = {}, errors = [],
                 read-only
                 placeholder="Optional collections"
               />
-              <s-button variant="secondary" onClick={() => handleResourcePicker('collection', excludedCollectionIds, setExcludedCollectionIds)}>Browse collections</s-button>
+              <s-button
+                variant="secondary"
+                onClick={() =>
+                  handleResourcePicker(
+                    "collection",
+                    excludedCollectionIds,
+                    setExcludedCollectionIds,
+                  )
+                }
+              >
+                Browse collections
+              </s-button>
             </s-stack>
           </s-grid>
         </s-stack>
       </s-section>
 
       <s-divider direction="inline" color="base"></s-divider>
-      
+
       <s-stack direction="inline" gap="base" align-items="center">
-        <s-button variant="secondary" href="/app">Cancel</s-button>
-        <s-button variant="primary" type="submit">{submitLabel}</s-button>
+        <s-button variant="secondary" href="/app">
+          Cancel
+        </s-button>
+        <s-button variant="primary" type="submit">
+          {submitLabel}
+        </s-button>
       </s-stack>
     </s-stack>
   );
