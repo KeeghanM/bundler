@@ -1,0 +1,8 @@
+{
+  "blocks": {
+    "bundle_widget": {
+      "name": "Bundle offer",
+      "api_base": "App proxy base URL"
+    }
+  }
+}
