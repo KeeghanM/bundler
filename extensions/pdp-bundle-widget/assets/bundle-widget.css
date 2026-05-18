@@ -1,7 +1,7 @@
 .bundler-widget {
-  border: 1px solid rgb(221 224 228);
-  border-radius: 18px;
-  box-shadow: 0 18px 42px rgb(18 24 38 / 8%);
+  border: 1px solid var(--bundler-border-color, rgb(221 224 228));
+  border-radius: var(--bundler-border-radius, 18px);
+  box-shadow: var(--bundler-shadow, 0 18px 42px rgb(18 24 38 / 8%));
   margin: 1.5rem 0;
   overflow: hidden;
   background: var(--bundler-bg, linear-gradient(135deg, rgb(255 255 255), rgb(246 250 255)));

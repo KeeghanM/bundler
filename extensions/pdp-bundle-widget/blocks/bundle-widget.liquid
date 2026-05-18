@@ -2,12 +2,17 @@
 
 <div
   class="bundler-widget"
-  style="--bundler-bg: {{ block.settings.bg_color }}; --bundler-text: {{ block.settings.text_color }}; --bundler-btn-bg: {{ block.settings.button_bg_color }}; --bundler-btn-text: {{ block.settings.button_text_color }};"
+  style="--bundler-bg: {{ block.settings.bg_color }}; --bundler-text: {{ block.settings.text_color }}; --bundler-btn-bg: {{ block.settings.button_bg_color }}; --bundler-btn-text: {{ block.settings.button_text_color }}; --bundler-border-color: {{ block.settings.border_color }}; --bundler-border-radius: {{ block.settings.border_radius }}px; --bundler-shadow: {% if block.settings.show_shadow %}0 18px 42px rgba(18, 24, 38, 0.08){% else %}none{% endif %};"
   data-shop="{{ shop.permanent_domain | escape }}"
-  data-api-base="{{ block.settings.api_base | escape }}"
+  data-api-base="/apps/bundler"
   data-mode="{{ block.settings.widget_mode | escape }}"
   data-eyebrow="{{ block.settings.eyebrow_text | escape }}"
   data-button-text="{{ block.settings.button_text | escape }}"
+  data-current-product-text="{{ block.settings.current_product_text | escape }}"
+  data-add-to-unlock-text="{{ block.settings.add_to_unlock_text | escape }}"
+  data-unlocked-text="{{ block.settings.unlocked_text | escape }}"
+  data-discount-percentage-text="{{ block.settings.discount_percentage_text | escape }}"
+  data-discount-fixed-text="{{ block.settings.discount_fixed_text | escape }}"
   data-product-id="gid://shopify/Product/{{ product.id }}"
   data-variant-id="gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}"
   data-sku="{{ product.selected_or_first_available_variant.sku | escape }}"
@@ -23,12 +28,6 @@
   "name": "Bundle offer",
   "target": "section",
   "settings": [
-    {
-      "type": "text",
-      "id": "api_base",
-      "label": "App proxy base URL",
-      "default": "/apps/bundler"
-    },
     {
       "type": "select",
       "id": "widget_mode",
@@ -62,6 +61,41 @@
       "default": "Checking bundle offers..."
     },
     {
+      "type": "text",
+      "id": "current_product_text",
+      "label": "Current Product Selected Text",
+      "info": "Use {groups} to dynamically insert the group names.",
+      "default": "Current product selected for {groups}."
+    },
+    {
+      "type": "text",
+      "id": "add_to_unlock_text",
+      "label": "Add Items To Unlock Text",
+      "info": "Use {missing} to dynamically insert the missing items.",
+      "default": "Add {missing} to unlock."
+    },
+    {
+      "type": "text",
+      "id": "unlocked_text",
+      "label": "Bundle Unlocked Text",
+      "info": "Use {title} to dynamically insert the bundle title.",
+      "default": "{title} offers unlocked!"
+    },
+    {
+      "type": "text",
+      "id": "discount_percentage_text",
+      "label": "Percentage Discount Text",
+      "info": "Use {discount} to dynamically insert the discount value.",
+      "default": "{discount}% off qualifying bundle items"
+    },
+    {
+      "type": "text",
+      "id": "discount_fixed_text",
+      "label": "Fixed Amount Discount Text",
+      "info": "Use {discount} to dynamically insert the discount value.",
+      "default": "{discount} off qualifying bundle items"
+    },
+    {
       "type": "header",
       "content": "Colors"
     },
@@ -88,6 +122,32 @@
       "id": "button_text_color",
       "label": "Button Text",
       "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Styling"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Color",
+      "default": "#dde0e4"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "label": "Border Radius",
+      "default": 18
+    },
+    {
+      "type": "checkbox",
+      "id": "show_shadow",
+      "label": "Show shadow",
+      "default": true
     }
   ]
 }

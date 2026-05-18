@@ -14,11 +14,13 @@
     return parts[parts.length - 1];
   };
 
-  const formatDiscount = (discount) => {
+  const formatDiscount = (discount, context) => {
     if (discount.type === "percentage") {
-      return `${discount.value}% off qualifying bundle items`;
+      const template = context.discountPercentageText || "{discount}% off qualifying bundle items";
+      return template.replace("{discount}", discount.value);
     }
-    return `${discount.value} off qualifying bundle items`;
+    const template = context.discountFixedText || "{discount} off qualifying bundle items";
+    return template.replace("{discount}", discount.value);
   };
 
   const escapeHtml = (value) => {
@@ -100,7 +102,7 @@
     });
 
     if (!response.ok) {
-      throw new Error(context.errorText || "Could not add the bundle to cart. Check selections and try again.");
+      throw new Error("Could not add the bundle to cart. Check selections and try again.");
     }
 
     postEvent(context.apiBase, context.shop, rule.id, "add_to_cart_succeeded");
@@ -117,14 +119,17 @@
       <p class="bundler-widget__eyebrow">${escapeHtml(context.eyebrow)}</p>
       <h3 class="bundler-widget__title">${escapeHtml(rule.title)}</h3>
       ${rule.description ? `<p class="bundler-widget__description">${escapeHtml(rule.description)}</p>` : ""}
-      <p class="bundler-widget__discount">${escapeHtml(formatDiscount(rule.discount))}</p>
+      <p class="bundler-widget__discount">${escapeHtml(formatDiscount(rule.discount, context))}</p>
     `;
 
     if (missingGroups.length === 0) {
-      html += `<p class="bundler-widget__hint">${escapeHtml(rule.title)} offers unlocked!</p>`;
+      const unlockedText = (context.unlockedText || "{title} offers unlocked!").replace("{title}", rule.title);
+      html += `<p class="bundler-widget__hint">${escapeHtml(unlockedText)}</p>`;
     } else {
       if (selectedGroups.length > 0) {
-        html += `<p class="bundler-widget__hint">Current product selected for ${escapeHtml(selectedGroups.map((g) => g.title).join(", "))}.</p>`;
+        const groupsString = selectedGroups.map((g) => g.title).join(", ");
+        const currentProductText = (context.currentProductText || "Current product selected for {groups}.").replace("{groups}", groupsString);
+        html += `<p class="bundler-widget__hint">${escapeHtml(currentProductText)}</p>`;
       }
     }
 
@@ -136,7 +141,8 @@
       html += `<button class="bundler-widget__button" type="button">${escapeHtml(context.buttonText)}</button>`;
     } else if (mode === "message_only" && missingGroups.length > 0) {
       const msgs = missingGroups.map(g => `${g.missingQuantity} from ${g.title}`).join(" and ");
-      html += `<p class="bundler-widget__hint">Add ${escapeHtml(msgs)} to unlock.</p>`;
+      const addToUnlockText = (context.addToUnlockText || "Add {missing} to unlock.").replace("{missing}", msgs);
+      html += `<p class="bundler-widget__hint">${escapeHtml(addToUnlockText)}</p>`;
     }
 
     html += `<p class="bundler-widget__status" role="status"></p>`;
@@ -183,7 +189,7 @@
     if (button) {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        status.textContent = "Adding bundle...";
+        status.textContent = context.loadingText || "Adding bundle...";
 
         try {
           await addBundleToCart(card, rule, context);
@@ -211,7 +217,13 @@
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
       mode: block.dataset.mode || "dropdowns",
       eyebrow: block.dataset.eyebrow || "Bundle offer",
-      buttonText: block.dataset.buttonText || "Add bundle to cart"
+      buttonText: block.dataset.buttonText || "Add bundle to cart",
+      currentProductText: block.dataset.currentProductText,
+      addToUnlockText: block.dataset.addToUnlockText,
+      unlockedText: block.dataset.unlockedText,
+      discountPercentageText: block.dataset.discountPercentageText,
+      discountFixedText: block.dataset.discountFixedText,
+      loadingText: block.dataset.loadingText
     };
     
     const params = new URLSearchParams({
