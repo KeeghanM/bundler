@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'extensions/**'
-      - 'shopify.extension.toml'
-      - 'shopify.app.toml'
+      - "extensions/**"
+      - "shopify.extension.toml"
+      - "shopify.app.toml"
 
 jobs:
   deploy:
@@ -19,15 +19,15 @@ jobs:
       SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Deploy Extensions
-        # --force skips the interactive confirmation prompt
-        run: npm run deploy -- --force
+        # --allow-updates flag allows the CLI to update the extension if it has already been deployed before, which is common in CI/CD pipelines
+        run: npm run deploy -- --allow-updates
