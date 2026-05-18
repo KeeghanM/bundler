@@ -32,3 +32,32 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model BundleRule {
+  id                            String   @id @default(cuid())
+  shop                          String
+  title                         String
+  description                   String?
+  status                        String   @default("draft")
+  triggerProductIdsJson         String   @default("[]")
+  triggerCollectionIdsJson      String   @default("[]")
+  groupsJson                    String
+  discountType                  String
+  discountValue                 Float
+  discountAppliesTo             String   @default("bundle_items")
+  startsAt                      DateTime?
+  endsAt                        DateTime?
+  allowMultipleApplications     Boolean  @default(false)
+  priority                      Int      @default(0)
+  excludedProductIdsJson        String   @default("[]")
+  excludedCollectionIdsJson     String   @default("[]")
+  widgetViews                   Int      @default(0)
+  addToCartClicks               Int      @default(0)
+  successfulAddsToCart          Int      @default(0)
+  discountApplications          Int      @default(0)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@index([shop, status])
+  @@index([shop, priority])
+}
