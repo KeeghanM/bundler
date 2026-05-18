@@ -168,7 +168,8 @@
             let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
             selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
             if (group.variants && group.variants.length > 0) {
-              group.variants.forEach(v => {
+              const eligible = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
+              eligible.forEach(v => {
                 selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
               });
             }
@@ -195,7 +196,8 @@
             carousel.className = "bundler-widget__carousel";
             
             if (group.variants && group.variants.length > 0) {
-              group.variants.forEach(v => {
+              const eligible = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
+              eligible.forEach(v => {
                 const item = document.createElement("div");
                 item.className = "bundler-widget__carousel-item";
                 
@@ -234,6 +236,9 @@
                 
                 carousel.appendChild(item);
               });
+              if (eligible.length === 0) {
+                carousel.innerHTML = `<p class="bundler-widget__hint">No additional eligible products found.</p>`;
+              }
             } else {
               carousel.innerHTML = `<p class="bundler-widget__hint">No eligible products found.</p>`;
             }

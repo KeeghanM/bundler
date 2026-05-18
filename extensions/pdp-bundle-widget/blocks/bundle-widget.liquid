@@ -19,8 +19,7 @@
   data-sku="{{ product.selected_or_first_available_variant.sku | escape }}"
   data-collection-ids='[{% for collection in product.collections %}"gid://shopify/Collection/{{ collection.id }}"{% unless forloop.last %},{% endunless %}{% endfor %}]'
 >
-  <div class="bundler-widget__loading">{{ block.settings.loading_text | escape }}</div>
-</div>
+  </div>
 
 <script src="{{ 'bundle-widget.js' | asset_url }}" defer></script>
 
@@ -59,8 +58,8 @@
     {
       "type": "text",
       "id": "loading_text",
-      "label": "Loading Text",
-      "default": "Checking bundle offers..."
+      "label": "Button Loading Text",
+      "default": "Adding bundle..."
     },
     {
       "type": "text",
