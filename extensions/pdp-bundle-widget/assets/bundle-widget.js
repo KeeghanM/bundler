@@ -374,7 +374,7 @@
         try {
           await addBundleToCart(card, rule, context);
           status.className = "bundler-widget__status bundler-widget__success";
-          status.innerHTML = 'Bundle added. <a href="/cart">View cart</a>';
+          status.innerHTML = context.successText;
         } catch (error) {
           status.className = "bundler-widget__status bundler-widget__error";
           status.textContent = error instanceof Error ? error.message : "Could not add the bundle to cart.";
@@ -403,6 +403,7 @@
       buttonText: block.dataset.buttonText !== undefined ? block.dataset.buttonText : "Add bundle to cart",
       currentProductText: block.dataset.currentProductText,
       addToUnlockText: block.dataset.addToUnlockText,
+      successText: block.dataset.successText !== undefined && block.dataset.successText !== null ? block.dataset.successText : 'Bundle added. <a href="/cart">View cart</a>',
       unlockedText: block.dataset.unlockedText,
       discountPercentageText: block.dataset.discountPercentageText,
       discountFixedText: block.dataset.discountFixedText,

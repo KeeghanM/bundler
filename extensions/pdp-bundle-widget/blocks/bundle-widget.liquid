@@ -2,7 +2,7 @@
 
 <div
   class="bundler-widget"
-  style="--bundler-bg: {{ block.settings.bg_color }}; --bundler-text: {{ block.settings.text_color }}; --bundler-btn-bg: {{ block.settings.button_bg_color }}; --bundler-btn-text: {{ block.settings.button_text_color }}; --bundler-border-color: {{ block.settings.border_color }}; --bundler-border-radius: {{ block.settings.border_radius }}px; --bundler-shadow: {% if block.settings.show_shadow %}0 18px 42px rgba(18, 24, 38, 0.08){% else %}none{% endif %};"
+  style="--bundler-bg: {{ block.settings.bg_color }}; --bundler-text: {{ block.settings.text_color }}; --bundler-btn-bg: {{ block.settings.button_bg_color }}; --bundler-btn-text: {{ block.settings.button_text_color }}; --bundler-border-color: {{ block.settings.border_color }}; --bundler-success: {{ block.settings.success_color }}; --bundler-error: {{ block.settings.error_color }}; --bundler-border-radius: {{ block.settings.border_radius }}px; --bundler-shadow: {% if block.settings.show_shadow %}0 18px 42px rgba(18, 24, 38, 0.08){% else %}none{% endif %};"
   data-shop="{{ shop.permanent_domain | escape }}"
   data-api-base="/apps/bundler"
   data-mode="{{ block.settings.widget_mode | escape }}"
@@ -10,6 +10,7 @@
   data-button-text="{{ block.settings.button_text | escape }}"
   data-loading-text="{{ block.settings.loading_text | escape }}"
   data-current-product-text="{{ block.settings.current_product_text | escape }}"
+  data-success-text="{{ block.settings.success_text | escape }}"
   data-show-variant-selector="{{ block.settings.show_variant_selector }}"
   data-select-options-text="{{ block.settings.select_options_text | escape }}"
   data-add-to-unlock-text="{{ block.settings.add_to_unlock_text | escape }}"
@@ -113,6 +114,13 @@
       "default": "{discount} off qualifying bundle items"
     },
     {
+      "type": "text",
+      "id": "success_text",
+      "label": "Success Message Text",
+      "info": "HTML is allowed. This displays when the bundle is successfully added to the cart.",
+      "default": "Bundle added. <a href=\"/cart\">View cart</a>"
+    },
+    {
       "type": "header",
       "content": "Colors"
     },
@@ -139,6 +147,18 @@
       "id": "button_text_color",
       "label": "Button Text",
       "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "success_color",
+      "label": "Success Text Color",
+      "default": "#166534"
+    },
+    {
+      "type": "color",
+      "id": "error_color",
+      "label": "Error Text Color",
+      "default": "#b81c1c"
     },
     {
       "type": "header",

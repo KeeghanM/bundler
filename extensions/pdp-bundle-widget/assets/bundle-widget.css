@@ -95,11 +95,11 @@
 }
 
 .bundler-widget__error {
-  color: rgb(184 28 28);
+  color: var(--bundler-error, rgb(184 28 28));
 }
 
 .bundler-widget__success {
-  color: rgb(22 101 52);
+  color: var(--bundler-success, rgb(22 101 52));
   font-weight: 700;
 }
 
