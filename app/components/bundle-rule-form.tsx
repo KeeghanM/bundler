@@ -626,7 +626,7 @@ export default function BundleRuleForm({ rule, errors = [], submitLabel }: Bundl
       </s-section>
 
       <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-        <a href="/app/bundles">Cancel</a>
+        <a href="/app">Cancel</a>
         <button type="submit">{submitLabel}</button>
       </div>
     </s-stack>

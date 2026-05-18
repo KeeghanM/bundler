@@ -38,7 +38,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   if (intent === "delete") {
     await deleteBundleRule(session.shop, id);
-    return redirect("/app/bundles");
+    return redirect("/app");
   }
 
   const payload = await parseBundleRuleFormData(request);
