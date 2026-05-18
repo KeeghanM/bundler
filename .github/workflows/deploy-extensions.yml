@@ -1,0 +1,29 @@
+name: Deploy Shopify Extensions
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Extensions to Shopify
+    runs-on: ubuntu-latest
+    env:
+      # Required for Shopify CLI to run headlessly in CI/CD
+      SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
+      SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Deploy Extensions
+        # --force skips the interactive confirmation prompt
+        run: npm run deploy -- --force
