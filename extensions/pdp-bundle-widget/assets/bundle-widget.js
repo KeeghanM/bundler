@@ -100,7 +100,12 @@
   const addBundleToCart = async (block, rule, context) => {
     const selectedInputs = Array.from(block.querySelectorAll("[data-bundler-variant-input]"));
     const selectedVariants = selectedInputs.map((input) => input.value.trim()).filter(Boolean);
-    const currentVariant = toNumericId(context.variantId);
+    
+    // Check if there is an active variant selector for the CURRENT product on the PDP page
+    // Shopify forms typically use name="id" for the main variant selector
+    const pageVariantInput = document.querySelector('form[action^="/cart/add"] [name="id"]');
+    const currentVariant = pageVariantInput ? pageVariantInput.value : toNumericId(context.variantId);
+    
     const collectionIds = JSON.stringify(context.collectionIds);
     const items = [currentVariant, ...selectedVariants].map((variantId) => ({
       id: variantId,
