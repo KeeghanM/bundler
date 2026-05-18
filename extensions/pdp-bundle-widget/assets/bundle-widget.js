@@ -23,6 +23,11 @@
     return template.replace("{discount}", discount.value);
   };
 
+  
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: window.Shopify?.currency?.active || "USD" }).format(amount);
+  };
+
   const escapeHtml = (value) => {
     const escapeMap = {
       "&": "&amp;",
@@ -133,11 +138,11 @@
       }
     }
 
-    if (mode === "dropdowns" && missingGroups.length > 0) {
+    if ((mode === "dropdowns" || mode === "carousel") && missingGroups.length > 0) {
       html += `<div class="bundler-widget__groups"></div>`;
     }
 
-    if (mode === "dropdowns" || missingGroups.length === 0) {
+    if (mode === "dropdowns" || mode === "carousel" || missingGroups.length === 0) {
       html += `<button class="bundler-widget__button" type="button">${escapeHtml(context.buttonText)}</button>`;
     } else if (mode === "message_only" && missingGroups.length > 0) {
       const msgs = missingGroups.map(g => `${g.missingQuantity} from ${g.title}`).join(" and ");
@@ -151,27 +156,91 @@
     const button = card.querySelector(".bundler-widget__button");
     const status = card.querySelector(".bundler-widget__status");
 
-    if (mode === "dropdowns" && missingGroups.length > 0) {
+    if ((mode === "dropdowns" || mode === "carousel") && missingGroups.length > 0) {
       const groupsContainer = card.querySelector(".bundler-widget__groups");
+      
       missingGroups.forEach((group) => {
         for (let i = 0; i < group.missingQuantity; i++) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "bundler-widget__group";
+          const wrapper = document.createElement("div");
           
-          let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
-          selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
-          if (group.variants && group.variants.length > 0) {
-            group.variants.forEach(v => {
-              selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
-            });
-          }
-          selectHtml += `</select>`;
+          if (mode === "dropdowns") {
+            wrapper.className = "bundler-widget__group";
+            let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
+            selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
+            if (group.variants && group.variants.length > 0) {
+              group.variants.forEach(v => {
+                selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
+              });
+            }
+            selectHtml += `</select>`;
 
-          wrapper.innerHTML = `
-            <span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>
-            ${selectHtml}
-          `;
-          groupsContainer.appendChild(wrapper);
+            wrapper.innerHTML = `
+              <span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>
+              ${selectHtml}
+            `;
+            groupsContainer.appendChild(wrapper);
+            
+          } else if (mode === "carousel") {
+            wrapper.className = "bundler-widget__carousel-wrapper";
+            wrapper.innerHTML = `<span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>`;
+            
+            // Hidden input to hold the selected variant for this carousel
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.setAttribute("data-bundler-variant-input", "true");
+            hiddenInput.value = "";
+            wrapper.appendChild(hiddenInput);
+
+            const carousel = document.createElement("div");
+            carousel.className = "bundler-widget__carousel";
+            
+            if (group.variants && group.variants.length > 0) {
+              group.variants.forEach(v => {
+                const item = document.createElement("div");
+                item.className = "bundler-widget__carousel-item";
+                
+                let cardHtml = "";
+                if (context.customCardHtml) {
+                  cardHtml = context.customCardHtml
+                    .replace(/{image}/g, `<img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />`)
+                    .replace(/{title}/g, escapeHtml(v.title))
+                    .replace(/{price}/g, formatMoney(v.price))
+                    .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn">Select</button>`);
+                } else {
+                  cardHtml = `
+                    <img class="bundler-widget__carousel-image" src="${escapeHtml(v.image || '')}" alt="${escapeHtml(v.title)}" />
+                    <div class="bundler-widget__carousel-content">
+                      <p class="bundler-widget__carousel-title">${escapeHtml(v.title)}</p>
+                      <p class="bundler-widget__carousel-price">${formatMoney(v.price)}</p>
+                      <button type="button" class="bundler-widget__carousel-btn">Select</button>
+                    </div>
+                  `;
+                }
+                item.innerHTML = cardHtml;
+
+                const btn = item.querySelector(".bundler-widget__carousel-btn");
+                if (btn) {
+                  btn.addEventListener("click", () => {
+                    // clear others
+                    carousel.querySelectorAll(".bundler-widget__carousel-item").forEach(el => el.classList.remove("is-selected"));
+                    carousel.querySelectorAll(".bundler-widget__carousel-btn").forEach(el => el.textContent = "Select");
+                    
+                    item.classList.add("is-selected");
+                    btn.textContent = "Selected";
+                    hiddenInput.value = toNumericId(v.id);
+                    hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
+                  });
+                }
+                
+                carousel.appendChild(item);
+              });
+            } else {
+              carousel.innerHTML = `<p class="bundler-widget__hint">No eligible products found.</p>`;
+            }
+
+            wrapper.appendChild(carousel);
+            groupsContainer.appendChild(wrapper);
+          }
         }
       });
     }
@@ -182,7 +251,7 @@
       button.disabled = inputs.some((input) => !input.value.trim());
     };
 
-    if (mode === "dropdowns") {
+    if (mode === "dropdowns" || mode === "carousel") {
       card.addEventListener("input", updateButton);
     }
 
@@ -216,6 +285,7 @@
       sku: block.dataset.sku,
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
       mode: block.dataset.mode || "dropdowns",
+      customCardHtml: block.dataset.customCardHtml || "",
       eyebrow: block.dataset.eyebrow || "Bundle offer",
       buttonText: block.dataset.buttonText || "Add bundle to cart",
       currentProductText: block.dataset.currentProductText,

@@ -60,7 +60,11 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
             id
             title
             price
-            product { title }
+            image { url }
+            product { 
+              title 
+              featuredImage { url }
+            }
           }
         }
       }
@@ -81,12 +85,17 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
         nodes(ids: $ids) {
           ... on Product {
             title
+            featuredImage { url }
             variants(first: 5) {
               nodes {
                 id
                 title
                 price
-                product { title }
+                image { url }
+                product { 
+                  title
+                  featuredImage { url }
+                }
               }
             }
           }
@@ -114,12 +123,17 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
             products(first: $first) {
               nodes {
                 title
+                featuredImage { url }
                 variants(first: 5) {
                   nodes {
                     id
                     title
                     price
-                    product { title }
+                    image { url }
+                    product { 
+                      title 
+                      featuredImage { url }
+                    }
                   }
                 }
               }
@@ -141,7 +155,8 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
   return resultVariants.slice(0, limit).map(v => ({
     id: v.id,
     title: v.product?.title ? `${v.product.title} - ${v.title}` : v.title,
-    price: v.price
+    price: v.price,
+    image: v.image?.url || v.product?.featuredImage?.url || null
   }));
 }
 
@@ -171,7 +186,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const enrichedRules = [];
   let adminClient = null;
 
-  if (mode === "dropdowns" && relevantRules.length > 0) {
+  if (["dropdowns", "carousel"].includes(mode) && relevantRules.length > 0) {
     const { admin } = await unauthenticated.admin(shop);
     adminClient = admin;
   }

@@ -13,6 +13,7 @@
   data-unlocked-text="{{ block.settings.unlocked_text | escape }}"
   data-discount-percentage-text="{{ block.settings.discount_percentage_text | escape }}"
   data-discount-fixed-text="{{ block.settings.discount_fixed_text | escape }}"
+  data-custom-card-html="{{ block.settings.custom_card_html | escape }}"
   data-product-id="gid://shopify/Product/{{ product.id }}"
   data-variant-id="gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}"
   data-sku="{{ product.selected_or_first_available_variant.sku | escape }}"
@@ -34,6 +35,7 @@
       "label": "Widget Mode",
       "options": [
         { "value": "dropdowns", "label": "Product Dropdowns" },
+        { "value": "carousel", "label": "Product Carousel" },
         { "value": "message_only", "label": "Message Only" }
       ],
       "default": "dropdowns"
@@ -148,6 +150,20 @@
       "id": "show_shadow",
       "label": "Show shadow",
       "default": true
+    },
+    {
+      "type": "header",
+      "content": "Advanced: Custom Carousel HTML"
+    },
+    {
+      "type": "paragraph",
+      "content": "Use {image}, {title}, {price}, and {button} to customize how carousel items render. If left blank, the default unopinionated card is used."
+    },
+    {
+      "type": "html",
+      "id": "custom_card_html",
+      "label": "Custom Product Card HTML",
+      "default": ""
     }
   ]
 }
