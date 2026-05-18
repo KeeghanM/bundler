@@ -25,6 +25,12 @@
 >
   </div>
 
+{% if block.settings.custom_css != blank %}
+<style>
+  {{ block.settings.custom_css }}
+</style>
+{% endif %}
+
 <script src="{{ 'bundle-widget.js' | asset_url }}" defer></script>
 
 {% schema %}
@@ -198,6 +204,16 @@
       "type": "html",
       "id": "custom_card_html",
       "label": "Custom Product Card HTML"
+    },
+    {
+      "type": "header",
+      "content": "Advanced: Custom CSS"
+    },
+    {
+      "type": "textarea",
+      "id": "custom_css",
+      "label": "Custom CSS",
+      "info": "Add custom CSS to fully style the bundle widget. Prefix your rules with .bundler-widget to ensure they only affect this block."
     }
   ]
 }
