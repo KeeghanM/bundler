@@ -60,6 +60,7 @@
       "type": "text",
       "id": "select_options_text",
       "label": "Options Text",
+      "info": "Text shown when the variant selector is off, letting customers know they can pick options later.",
       "default": "Select Options in Basket"
     },
     {
@@ -88,36 +89,42 @@
       "type": "text",
       "id": "current_product_text",
       "label": "Current Product Selected Text",
+      "info": "Use {groups} to dynamically insert the group names.",
       "default": "Current product selected for {groups}."
     },
     {
       "type": "text",
       "id": "add_to_unlock_text",
       "label": "Add Items To Unlock Text",
+      "info": "Use {missing} to dynamically insert the missing items.",
       "default": "Add {missing} to unlock."
     },
     {
       "type": "text",
       "id": "unlocked_text",
       "label": "Bundle Unlocked Text",
+      "info": "Use {title} to dynamically insert the bundle title.",
       "default": "{title} offers unlocked!"
     },
     {
       "type": "text",
       "id": "discount_percentage_text",
       "label": "Percentage Discount Text",
+      "info": "Use {discount} to dynamically insert the discount value.",
       "default": "{discount}% off qualifying items"
     },
     {
       "type": "text",
       "id": "discount_fixed_text",
       "label": "Fixed Amount Discount Text",
+      "info": "Use {discount} to dynamically insert the discount value.",
       "default": "{discount} off qualifying items"
     },
     {
       "type": "text",
       "id": "success_text",
       "label": "Success Message Text",
+      "info": "HTML is allowed. This displays when the bundle is successfully added to the cart.",
       "default": "Bundle added."
     },
     {
@@ -188,7 +195,7 @@
     },
     {
       "type": "header",
-      "content": "Advanced: Custom Carousel HTML"
+      "content": "Advanced"
     },
     {
       "type": "paragraph",
@@ -202,12 +209,14 @@
     {
       "type": "textarea",
       "id": "custom_css",
-      "label": "Advanced: Custom CSS"
+      "label": "Advanced: Custom CSS",
+      "info": "Add custom CSS to fully style the bundle widget. Prefix your rules with .bundler-widget to ensure they only affect this block."
     },
     {
       "type": "textarea",
       "id": "success_js_callback",
-      "label": "Advanced: Success Callback (JavaScript)"
+      "label": "Advanced: Success Callback (JavaScript)",
+      "info": "Custom JavaScript to run immediately after the bundle is successfully added to the cart (e.g. `document.querySelector('cart-drawer').open();` or `window.location.href='/cart';`)"
     }
   ]
 }
