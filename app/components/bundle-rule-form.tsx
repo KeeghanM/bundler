@@ -131,6 +131,7 @@ const inputStyle = {
   font: "inherit",
   padding: "0.7rem 0.8rem",
   width: "100%",
+  boxSizing: "border-box",
 } as const;
 
 const labelStyle = {

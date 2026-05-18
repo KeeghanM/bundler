@@ -188,8 +188,8 @@
   };
 
   document.querySelectorAll(selector).forEach((block) => {
-    loadBlock(block).catch((error) => {
-      block.innerHTML = `<div class="bundler-widget__error">${escapeHtml(error instanceof Error ? error.message : "Could not load bundle offers.")}</div>`;
+    loadBlock(block).catch(() => {
+      block.innerHTML = "";
     });
   });
 })();
