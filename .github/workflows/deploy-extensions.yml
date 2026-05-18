@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/**"
       - "extensions/**"
       - "shopify.extension.toml"
       - "shopify.app.toml"
