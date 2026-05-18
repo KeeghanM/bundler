@@ -2,14 +2,18 @@
 
 <div
   class="bundler-widget"
+  style="--bundler-bg: {{ block.settings.bg_color }}; --bundler-text: {{ block.settings.text_color }}; --bundler-btn-bg: {{ block.settings.button_bg_color }}; --bundler-btn-text: {{ block.settings.button_text_color }};"
   data-shop="{{ shop.permanent_domain | escape }}"
   data-api-base="{{ block.settings.api_base | escape }}"
+  data-mode="{{ block.settings.widget_mode | escape }}"
+  data-eyebrow="{{ block.settings.eyebrow_text | escape }}"
+  data-button-text="{{ block.settings.button_text | escape }}"
   data-product-id="gid://shopify/Product/{{ product.id }}"
   data-variant-id="gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}"
   data-sku="{{ product.selected_or_first_available_variant.sku | escape }}"
   data-collection-ids='[{% for collection in product.collections %}"gid://shopify/Collection/{{ collection.id }}"{% unless forloop.last %},{% endunless %}{% endfor %}]'
 >
-  <div class="bundler-widget__loading">Checking bundle offers...</div>
+  <div class="bundler-widget__loading">{{ block.settings.loading_text | escape }}</div>
 </div>
 
 <script src="{{ 'bundle-widget.js' | asset_url }}" defer></script>
@@ -24,6 +28,66 @@
       "id": "api_base",
       "label": "App proxy base URL",
       "default": "/apps/bundler"
+    },
+    {
+      "type": "select",
+      "id": "widget_mode",
+      "label": "Widget Mode",
+      "options": [
+        { "value": "dropdowns", "label": "Product Dropdowns" },
+        { "value": "message_only", "label": "Message Only" }
+      ],
+      "default": "dropdowns"
+    },
+    {
+      "type": "header",
+      "content": "Text Customization"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow_text",
+      "label": "Eyebrow Text",
+      "default": "Bundle offer"
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Add bundle to cart"
+    },
+    {
+      "type": "text",
+      "id": "loading_text",
+      "label": "Loading Text",
+      "default": "Checking bundle offers..."
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#181d27"
+    },
+    {
+      "type": "color",
+      "id": "button_bg_color",
+      "label": "Button Background",
+      "default": "#155dfc"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text",
+      "default": "#ffffff"
     }
   ]
 }

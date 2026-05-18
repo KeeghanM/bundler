@@ -18,7 +18,6 @@
     if (discount.type === "percentage") {
       return `${discount.value}% off qualifying bundle items`;
     }
-
     return `${discount.value} off qualifying bundle items`;
   };
 
@@ -30,7 +29,6 @@
       '"': "&quot;",
       "'": "&#039;",
     };
-
     return String(value || "").replace(/[&<>"']/g, (character) => escapeMap[character]);
   };
 
@@ -39,26 +37,36 @@
       if (eligibility.type === "collection") {
         return eligibility.collectionIds.some((id) => context.collectionIds.includes(id));
       }
-
       if (eligibility.type === "product") {
         return (
           eligibility.productIds.includes(context.productId) ||
           eligibility.variantIds.includes(context.variantId)
         );
       }
-
       return context.sku && eligibility.skus.includes(context.sku.toUpperCase());
     });
   };
 
-  const getExactVariantSuggestion = (group) => {
-    for (const eligibility of group.eligibility) {
-      if (eligibility.type === "product" && eligibility.variantIds.length > 0) {
-        return toNumericId(eligibility.variantIds[0]);
+  const calculateAllocation = (rule, context) => {
+    let currentQty = 1;
+    const selected = [];
+    const missing = [];
+
+    for (const group of rule.groups) {
+      let requiredQty = group.minQuantity;
+
+      if (currentQty > 0 && groupMatchesProduct(group, context)) {
+        selected.push(group);
+        requiredQty -= 1;
+        currentQty -= 1;
+      }
+
+      if (requiredQty > 0) {
+        missing.push({ ...group, missingQuantity: requiredQty });
       }
     }
 
-    return "";
+    return { selectedGroups: selected, missingGroups: missing };
   };
 
   const postEvent = (apiBase, shop, ruleId, event) => {
@@ -92,64 +100,104 @@
     });
 
     if (!response.ok) {
-      throw new Error("Could not add the bundle to cart. Check selections and try again.");
+      throw new Error(context.errorText || "Could not add the bundle to cart. Check selections and try again.");
     }
 
     postEvent(context.apiBase, context.shop, rule.id, "add_to_cart_succeeded");
   };
 
   const renderRule = (block, rule, context) => {
-    const selectedGroups = rule.groups.filter((group) => groupMatchesProduct(group, context));
-    const missingGroups = rule.groups.filter((group) => !groupMatchesProduct(group, context));
+    const { selectedGroups, missingGroups } = calculateAllocation(rule, context);
+    const mode = context.mode; // dropdowns or message_only
+    
     const card = document.createElement("div");
     card.className = "bundler-widget__card";
-    card.innerHTML = `
-      <p class="bundler-widget__eyebrow">Bundle offer</p>
+    
+    let html = `
+      <p class="bundler-widget__eyebrow">${escapeHtml(context.eyebrow)}</p>
       <h3 class="bundler-widget__title">${escapeHtml(rule.title)}</h3>
       ${rule.description ? `<p class="bundler-widget__description">${escapeHtml(rule.description)}</p>` : ""}
       <p class="bundler-widget__discount">${escapeHtml(formatDiscount(rule.discount))}</p>
-      <p class="bundler-widget__hint">Current product selected for ${escapeHtml(selectedGroups.map((group) => group.title).join(", ") || "this offer")}.</p>
-      <div class="bundler-widget__groups"></div>
-      <button class="bundler-widget__button" type="button">Add bundle to cart</button>
-      <p class="bundler-widget__status" role="status"></p>
     `;
-    const groupsContainer = card.querySelector(".bundler-widget__groups");
+
+    if (missingGroups.length === 0) {
+      html += `<p class="bundler-widget__hint">${escapeHtml(rule.title)} offers unlocked!</p>`;
+    } else {
+      if (selectedGroups.length > 0) {
+        html += `<p class="bundler-widget__hint">Current product selected for ${escapeHtml(selectedGroups.map((g) => g.title).join(", "))}.</p>`;
+      }
+    }
+
+    if (mode === "dropdowns" && missingGroups.length > 0) {
+      html += `<div class="bundler-widget__groups"></div>`;
+    }
+
+    if (mode === "dropdowns" || missingGroups.length === 0) {
+      html += `<button class="bundler-widget__button" type="button">${escapeHtml(context.buttonText)}</button>`;
+    } else if (mode === "message_only" && missingGroups.length > 0) {
+      const msgs = missingGroups.map(g => `${g.missingQuantity} from ${g.title}`).join(" and ");
+      html += `<p class="bundler-widget__hint">Add ${escapeHtml(msgs)} to unlock.</p>`;
+    }
+
+    html += `<p class="bundler-widget__status" role="status"></p>`;
+    card.innerHTML = html;
+
     const button = card.querySelector(".bundler-widget__button");
     const status = card.querySelector(".bundler-widget__status");
 
-    missingGroups.forEach((group) => {
-      const wrapper = document.createElement("label");
-      wrapper.className = "bundler-widget__group";
-      wrapper.innerHTML = `
-        <span class="bundler-widget__group-title">Add ${escapeHtml(group.minQuantity)} from ${escapeHtml(group.title)}</span>
-        <input class="bundler-widget__input" data-bundler-variant-input placeholder="Variant ID" value="${getExactVariantSuggestion(group)}" />
-      `;
-      groupsContainer.appendChild(wrapper);
-    });
+    if (mode === "dropdowns" && missingGroups.length > 0) {
+      const groupsContainer = card.querySelector(".bundler-widget__groups");
+      missingGroups.forEach((group) => {
+        for (let i = 0; i < group.missingQuantity; i++) {
+          const wrapper = document.createElement("label");
+          wrapper.className = "bundler-widget__group";
+          
+          let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
+          selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
+          if (group.variants && group.variants.length > 0) {
+            group.variants.forEach(v => {
+              selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
+            });
+          }
+          selectHtml += `</select>`;
+
+          wrapper.innerHTML = `
+            <span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>
+            ${selectHtml}
+          `;
+          groupsContainer.appendChild(wrapper);
+        }
+      });
+    }
 
     const updateButton = () => {
+      if (!button) return;
       const inputs = Array.from(card.querySelectorAll("[data-bundler-variant-input]"));
       button.disabled = inputs.some((input) => !input.value.trim());
     };
 
-    card.addEventListener("input", updateButton);
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      status.textContent = "Adding bundle...";
+    if (mode === "dropdowns") {
+      card.addEventListener("input", updateButton);
+    }
 
-      try {
-        await addBundleToCart(card, rule, context);
-        status.className = "bundler-widget__status bundler-widget__success";
-        status.innerHTML = 'Bundle added. <a href="/cart">View cart</a>';
-      } catch (error) {
-        status.className = "bundler-widget__status bundler-widget__error";
-        status.textContent =
-          error instanceof Error ? error.message : "Could not add the bundle to cart.";
-        updateButton();
-      }
-    });
+    if (button) {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        status.textContent = "Adding bundle...";
 
-    updateButton();
+        try {
+          await addBundleToCart(card, rule, context);
+          status.className = "bundler-widget__status bundler-widget__success";
+          status.innerHTML = 'Bundle added. <a href="/cart">View cart</a>';
+        } catch (error) {
+          status.className = "bundler-widget__status bundler-widget__error";
+          status.textContent = error instanceof Error ? error.message : "Could not add the bundle to cart.";
+          updateButton();
+        }
+      });
+      updateButton();
+    }
+
     return card;
   };
 
@@ -161,14 +209,21 @@
       variantId: block.dataset.variantId,
       sku: block.dataset.sku,
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
+      mode: block.dataset.mode || "dropdowns",
+      eyebrow: block.dataset.eyebrow || "Bundle offer",
+      buttonText: block.dataset.buttonText || "Add bundle to cart"
     };
+    
     const params = new URLSearchParams({
       shop: context.shop,
       productId: context.productId,
       variantId: context.variantId,
       sku: context.sku || "",
       collectionIds: context.collectionIds.join(","),
+      mode: context.mode,
+      limit: "100"
     });
+    
     const response = await fetch(`${context.apiBase}/bundle-rules?${params.toString()}`);
 
     if (!response.ok) {
