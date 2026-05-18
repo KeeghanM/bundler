@@ -12,11 +12,10 @@ function getPrismaClient() {
 
   // Use Turso/libsql if the URL indicates it
   if (url && (url.startsWith("libsql:") || url.startsWith("https:") || url.startsWith("wss:"))) {
-    const libsql = createClient({
+    const adapter = new PrismaLibSQL({
       url,
       authToken: process.env.DATABASE_AUTH_TOKEN,
     });
-    const adapter = new PrismaLibSQL(libsql);
     return new PrismaClient({ adapter });
   }
 

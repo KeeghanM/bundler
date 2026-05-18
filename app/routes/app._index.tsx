@@ -113,6 +113,7 @@ export default function BundleRulesPage() {
                     direction="inline"
                     gap="base"
                     align-items="center"
+                    // @ts-expect-error - style is not typed on s-stack
                     style={{ justifyContent: "space-between" }}
                   >
                     <div>

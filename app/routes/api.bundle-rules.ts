@@ -53,7 +53,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
   // If there are explicit variants
   if (eligibleVariantGids.size > 0) {
     const ids = Array.from(eligibleVariantGids).slice(0, limit);
-    const res = await admin.graphql(`
+    const res: any = await admin.graphql(`
       query getVariants($ids: [ID!]!) {
         nodes(ids: $ids) {
           ... on ProductVariant {
@@ -70,7 +70,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
         }
       }
     `, { variables: { ids } });
-    const data = await res.json();
+    const data: any = await res.json();
     if (data.data?.nodes) {
       for (const node of data.data.nodes) {
         if (node) resultVariants.push(node);
@@ -81,7 +81,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
   // If there are products, fetch their first variants
   if (eligibleProductGids.size > 0 && resultVariants.length < limit) {
     const ids = Array.from(eligibleProductGids).slice(0, limit - resultVariants.length);
-    const res = await admin.graphql(`
+    const res: any = await admin.graphql(`
       query getProducts($ids: [ID!]!) {
         nodes(ids: $ids) {
           ... on Product {
@@ -104,7 +104,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
         }
       }
     `, { variables: { ids } });
-    const data = await res.json();
+    const data: any = await res.json();
     if (data.data?.nodes) {
       for (const node of data.data.nodes) {
         if (node?.variants?.nodes) {
@@ -119,7 +119,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
     const ids = Array.from(collectionGids).slice(0, 3); // check first few collections
     for (const id of ids) {
       if (resultVariants.length >= limit) break;
-      const res = await admin.graphql(`
+      const res: any = await admin.graphql(`
         query getCollection($id: ID!, $first: Int!) {
           collection(id: $id) {
             products(first: $first) {
@@ -144,7 +144,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
           }
         }
       `, { variables: { id, first: limit - resultVariants.length } });
-      const data = await res.json();
+      const data: any = await res.json();
       if (data.data?.collection?.products?.nodes) {
         for (const product of data.data.collection.products.nodes) {
           if (product?.variants?.nodes) {
@@ -198,7 +198,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   for (const rule of relevantRules) {
     const enrichedGroups = [];
     for (const group of rule.groups) {
-      let variants = [];
+      let variants: any[] = [];
       if (adminClient) {
         variants = await fetchVariantsForGroup(adminClient, group, limit);
       }

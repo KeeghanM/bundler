@@ -71,6 +71,8 @@ const eligibilityToDraft = (
       variantIds: joinValues(eligibility.variantIds),
     };
   }
+
+  throw new Error("Unknown eligibility type");
 };
 
 const groupToDraft = (group: BundleGroup): GroupDraft => ({
