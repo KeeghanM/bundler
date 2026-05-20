@@ -9,6 +9,13 @@
     }
   };
 
+  const parseList = (value) => {
+    return String(value || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const toNumericId = (gid) => {
     const parts = String(gid || "").split("/");
     return parts[parts.length - 1];
@@ -97,44 +104,98 @@
     }).catch(function () {});
   };
 
+  const getInputCollectionIds = (input) => {
+    return parseJson(input.getAttribute("data-bundler-collection-ids") || "[]", []);
+  };
+
+  const getCartSections = (context) => {
+    return parseList(context.cartSections);
+  };
+
+  const replaceCartSection = (sectionId, html) => {
+    if (!html) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    const current =
+      document.getElementById(`shopify-section-${sectionId}`) ||
+      document.getElementById(sectionId) ||
+      document.querySelector(`[data-section-id="${sectionId}"]`);
+
+    const incoming =
+      wrapper.querySelector(`#shopify-section-${sectionId}`) ||
+      wrapper.querySelector(`#${sectionId}`) ||
+      wrapper.querySelector(`[data-section-id="${sectionId}"]`) ||
+      wrapper.firstElementChild;
+
+    if (current && incoming) {
+      current.replaceWith(incoming);
+    }
+  };
+
+  const refreshCartUi = async (payload) => {
+    if (payload && payload.sections) {
+      Object.entries(payload.sections).forEach(([sectionId, html]) => {
+        replaceCartSection(sectionId, html);
+      });
+    }
+
+    const cart = await fetch("/cart.js").then((response) => response.json()).catch(() => null);
+    const detail = { cart, product: payload };
+
+    document.documentElement.dispatchEvent(new CustomEvent("cart:build", { bubbles: true, detail }));
+    document.documentElement.dispatchEvent(new CustomEvent("cart:refresh", { bubbles: true, detail }));
+    document.dispatchEvent(new CustomEvent("ajaxProduct:added", { detail }));
+    document.dispatchEvent(new CustomEvent("cart:updated", { detail }));
+    window.dispatchEvent(new CustomEvent("cart:refresh", { detail }));
+    window.dispatchEvent(new CustomEvent("cart:updated", { detail }));
+  };
+
   const addBundleToCart = async (block, rule, context) => {
     const selectedInputs = Array.from(block.querySelectorAll("[data-bundler-variant-input]"));
-    const selectedVariants = selectedInputs.map((input) => input.value.trim()).filter(Boolean);
+    const selectedVariants = selectedInputs
+      .map((input) => ({
+        variantId: input.value.trim(),
+        collectionIds: getInputCollectionIds(input),
+      }))
+      .filter((item) => item.variantId);
     
     // Check if there is an active variant selector for the CURRENT product on the PDP page
     // Shopify forms typically use name="id" for the main variant selector
     const pageVariantInput = document.querySelector('form[action^="/cart/add"] [name="id"]');
     const currentVariant = pageVariantInput ? pageVariantInput.value : toNumericId(context.variantId);
     
-    const collectionIds = JSON.stringify(context.collectionIds);
-    const items = [currentVariant, ...selectedVariants].map((variantId) => ({
-      id: variantId,
+    const items = [
+      { variantId: currentVariant, collectionIds: context.collectionIds },
+      ...selectedVariants,
+    ].map((item) => ({
+      id: item.variantId,
       quantity: 1,
       properties: {
         _bundle_rule_id: rule.id,
-        _bundle_collection_ids: collectionIds,
+        _bundle_collection_ids: JSON.stringify(item.collectionIds),
       },
     }));
+    const sections = getCartSections(context);
 
     postEvent(context.apiBase, context.shop, rule.id, "add_to_cart_clicked");
 
     const response = await fetch("/cart/add.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({
+        items,
+        ...(sections.length > 0 ? { sections, sections_url: window.location.pathname } : {}),
+      }),
     });
 
     if (!response.ok) {
       throw new Error("Could not add the bundle to cart. Check selections and try again.");
     }
 
-    // Try to trigger common standard Shopify ajax cart events
-    try {
-      const payload = await response.json();
-      document.documentElement.dispatchEvent(new CustomEvent('cart:build', { bubbles: true }));
-      window.dispatchEvent(new Event('cart:refresh'));
-      document.dispatchEvent(new CustomEvent('ajaxProduct:added', { detail: { product: payload } }));
-    } catch(e) {}
+    const payload = await response.json().catch(() => null);
+    await refreshCartUi(payload);
 
     postEvent(context.apiBase, context.shop, rule.id, "add_to_cart_succeeded");
   };
@@ -157,14 +218,14 @@
     }
 
     if (missingGroups.length === 0) {
-      const unlockedTpl = context.unlockedText !== undefined && context.unlockedText !== null ? context.unlockedText : "{title} offers unlocked!";
+      const unlockedTpl = context.unlockedText !== undefined && context.unlockedText !== null ? context.unlockedText : "{title} offers unlocked.";
       if (unlockedTpl) {
         html += `<p class="bundler-widget__hint">${escapeHtml(unlockedTpl.replace("{title}", rule.title))}</p>`;
       }
     } else {
       if (selectedGroups.length > 0) {
         const groupsString = selectedGroups.map((g) => g.title).join(", ");
-        const currentProdTpl = context.currentProductText !== undefined && context.currentProductText !== null ? context.currentProductText : "Current product selected for {groups}.";
+        const currentProdTpl = context.currentProductText !== undefined && context.currentProductText !== null ? context.currentProductText : "current product selected for {groups}.";
         if (currentProdTpl) {
           html += `<p class="bundler-widget__hint">${escapeHtml(currentProdTpl.replace("{groups}", groupsString))}</p>`;
         }
@@ -179,7 +240,7 @@
       html += `<button class="bundler-widget__button" type="button">${escapeHtml(context.buttonText)}</button>`;
     } else if (mode === "message_only" && missingGroups.length > 0) {
       const msgs = missingGroups.map(g => `${g.missingQuantity} from ${g.title}`).join(" and ");
-      const addToUnlockTpl = context.addToUnlockText !== undefined && context.addToUnlockText !== null ? context.addToUnlockText : "Add {missing} to unlock.";
+      const addToUnlockTpl = context.addToUnlockText !== undefined && context.addToUnlockText !== null ? context.addToUnlockText : "add {missing} to unlock.";
       if (addToUnlockTpl) {
         html += `<p class="bundler-widget__hint">${escapeHtml(addToUnlockTpl.replace("{missing}", msgs))}</p>`;
       }
@@ -200,8 +261,8 @@
           
           if (mode === "dropdowns") {
             wrapper.className = "bundler-widget__group";
-            let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input>`;
-            selectHtml += `<option value="">Select ${escapeHtml(group.title)}...</option>`;
+            let selectHtml = `<select class="bundler-widget__input" data-bundler-variant-input data-bundler-collection-ids="[]">`;
+            selectHtml += `<option value="">select ${escapeHtml(group.title)}...</option>`;
             
             if (group.variants && group.variants.length > 0) {
               const eligible = group.variants.filter(v => v.productId !== context.productId && v.id !== context.variantId);
@@ -224,7 +285,7 @@
                 if (context.showVariantSelector && prod.variants.length > 1) {
                   selectHtml += `<optgroup label="${escapeHtml(prod.productTitle)}">`;
                   prod.variants.forEach(v => {
-                    selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(v.title)}</option>`;
+                    selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}" data-collection-ids="${escapeHtml(JSON.stringify(v.collectionIds || []))}">${escapeHtml(v.title)}</option>`;
                   });
                   selectHtml += `</optgroup>`;
                 } else {
@@ -235,26 +296,34 @@
                   } else if (prod.variants.length === 1 && v.title !== "Default Title") {
                     label += ` - ${v.title}`;
                   }
-                  selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}">${escapeHtml(label)}</option>`;
+                  selectHtml += `<option value="${escapeHtml(toNumericId(v.id))}" data-collection-ids="${escapeHtml(JSON.stringify(v.collectionIds || []))}">${escapeHtml(label)}</option>`;
                 }
               });
             }
             selectHtml += `</select>`;
 
             wrapper.innerHTML = `
-              <span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>
+              <span class="bundler-widget__group-title">add 1 ${escapeHtml(group.title)}</span>
               ${selectHtml}
             `;
             groupsContainer.appendChild(wrapper);
+            const selectEl = wrapper.querySelector("[data-bundler-variant-input]");
+            if (selectEl) {
+              selectEl.addEventListener("change", () => {
+                const selectedOption = selectEl.options[selectEl.selectedIndex];
+                selectEl.setAttribute("data-bundler-collection-ids", selectedOption.getAttribute("data-collection-ids") || "[]");
+              });
+            }
             
           } else if (mode === "carousel") {
             wrapper.className = "bundler-widget__carousel-wrapper";
-            wrapper.innerHTML = `<span class="bundler-widget__group-title">Add 1 ${escapeHtml(group.title)}</span>`;
+            wrapper.innerHTML = `<span class="bundler-widget__group-title">add 1 ${escapeHtml(group.title)}</span>`;
             
             const hiddenInput = document.createElement("input");
-            hiddenInput.type = "hidden";
-            hiddenInput.setAttribute("data-bundler-variant-input", "true");
-            hiddenInput.value = "";
+              hiddenInput.type = "hidden";
+              hiddenInput.setAttribute("data-bundler-variant-input", "true");
+              hiddenInput.setAttribute("data-bundler-collection-ids", "[]");
+              hiddenInput.value = "";
             wrapper.appendChild(hiddenInput);
 
             const carousel = document.createElement("div");
@@ -290,7 +359,7 @@
                   if (context.showVariantSelector) {
                     variantSelectorHtml = `<select class="bundler-widget__carousel-variant-select">`;
                     prod.variants.forEach(v => {
-                      variantSelectorHtml += `<option value="${escapeHtml(toNumericId(v.id))}" data-price="${escapeHtml(v.price)}" data-image="${escapeHtml(v.image || prod.productImage || '')}">${escapeHtml(v.title)}</option>`;
+                      variantSelectorHtml += `<option value="${escapeHtml(toNumericId(v.id))}" data-price="${escapeHtml(v.price)}" data-image="${escapeHtml(v.image || prod.productImage || '')}" data-collection-ids="${escapeHtml(JSON.stringify(v.collectionIds || []))}">${escapeHtml(v.title)}</option>`;
                     });
                     variantSelectorHtml += `</select>`;
                   } else {
@@ -304,7 +373,7 @@
                     .replace(/{image}/g, `<img class="bundler-widget__carousel-image" src="${escapeHtml(firstVariant.image || prod.productImage || '')}" alt="${escapeHtml(prod.productTitle)}" />`)
                     .replace(/{title}/g, escapeHtml(prod.productTitle))
                     .replace(/{price}/g, getDiscountedPriceHtml(firstVariant.price, rule))
-                    .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}">Select</button>`);
+                    .replace(/{button}/g, `<button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}" data-collection-ids="${escapeHtml(JSON.stringify(firstVariant.collectionIds || []))}">${escapeHtml(context.selectButtonText)}</button>`);
                 } else {
                   cardHtml = `
                     <img class="bundler-widget__carousel-image" src="${escapeHtml(firstVariant.image || prod.productImage || '')}" alt="${escapeHtml(prod.productTitle)}" />
@@ -314,7 +383,7 @@
                         <p class="bundler-widget__carousel-price">${getDiscountedPriceHtml(firstVariant.price, rule)}</p>
                       </div>
                       ${variantSelectorHtml}
-                      <button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}">Select</button>
+                      <button type="button" class="bundler-widget__carousel-btn" data-variant-id="${escapeHtml(toNumericId(firstVariant.id))}" data-collection-ids="${escapeHtml(JSON.stringify(firstVariant.collectionIds || []))}">${escapeHtml(context.selectButtonText)}</button>
                     </div>
                   `;
                 }
@@ -329,6 +398,7 @@
                   selectEl.addEventListener("change", () => {
                     const selectedOption = selectEl.options[selectEl.selectedIndex];
                     if (btn) btn.setAttribute("data-variant-id", selectedOption.value);
+                    if (btn) btn.setAttribute("data-collection-ids", selectedOption.getAttribute("data-collection-ids") || "[]");
                     if (priceWrapper) priceWrapper.innerHTML = getDiscountedPriceHtml(selectedOption.getAttribute("data-price"), rule);
                     if (imgEl && selectedOption.getAttribute("data-image")) {
                        imgEl.src = selectedOption.getAttribute("data-image");
@@ -336,6 +406,7 @@
                     
                     if (item.classList.contains("is-selected") && hiddenInput) {
                       hiddenInput.value = toNumericId(selectedOption.value);
+                      hiddenInput.setAttribute("data-bundler-collection-ids", selectedOption.getAttribute("data-collection-ids") || "[]");
                       hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
                     }
                   });
@@ -344,11 +415,12 @@
                 if (btn) {
                   btn.addEventListener("click", () => {
                     carousel.querySelectorAll(".bundler-widget__carousel-item").forEach(el => el.classList.remove("is-selected"));
-                    carousel.querySelectorAll(".bundler-widget__carousel-btn").forEach(el => el.textContent = "Select");
+                    carousel.querySelectorAll(".bundler-widget__carousel-btn").forEach(el => el.textContent = context.selectButtonText);
                     
                     item.classList.add("is-selected");
-                    btn.textContent = "Selected";
+                    btn.textContent = context.selectedButtonText;
                     hiddenInput.value = toNumericId(btn.getAttribute("data-variant-id"));
+                    hiddenInput.setAttribute("data-bundler-collection-ids", btn.getAttribute("data-collection-ids") || "[]");
                     hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
                   });
                 }
@@ -382,7 +454,7 @@
     if (button) {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        status.textContent = context.loadingText !== undefined ? context.loadingText : "Adding bundle...";
+        status.textContent = context.loadingText !== undefined ? context.loadingText : "adding bundle...";
 
         try {
           await addBundleToCart(card, rule, context);
@@ -420,13 +492,16 @@
       collectionIds: parseJson(block.dataset.collectionIds || "[]", []),
       mode: block.dataset.mode || "dropdowns",
       showVariantSelector: block.dataset.showVariantSelector !== "false",
-      selectOptionsText: block.dataset.selectOptionsText !== undefined && block.dataset.selectOptionsText !== null ? block.dataset.selectOptionsText : "Select Options in Basket",
+      selectOptionsText: block.dataset.selectOptionsText !== undefined && block.dataset.selectOptionsText !== null ? block.dataset.selectOptionsText : "select options in basket",
       customCardHtml: block.dataset.customCardHtml,
+      cartSections: block.dataset.cartSections,
       eyebrow: block.dataset.eyebrow,
-      buttonText: block.dataset.buttonText !== undefined ? block.dataset.buttonText : "Add bundle to cart",
+      buttonText: block.dataset.buttonText !== undefined ? block.dataset.buttonText : "add bundle to cart",
+      selectButtonText: block.dataset.selectButtonText !== undefined ? block.dataset.selectButtonText : "select",
+      selectedButtonText: block.dataset.selectedButtonText !== undefined ? block.dataset.selectedButtonText : "selected",
       currentProductText: block.dataset.currentProductText,
       addToUnlockText: block.dataset.addToUnlockText,
-      successText: block.dataset.successText !== undefined && block.dataset.successText !== null ? block.dataset.successText : 'Bundle added. <a href="/cart">View cart</a>',
+      successText: block.dataset.successText !== undefined && block.dataset.successText !== null ? block.dataset.successText : 'bundle added. <a href="/cart">view cart</a>',
       successJsCallback: block.dataset.successJsCallback,
       unlockedText: block.dataset.unlockedText,
       discountPercentageText: block.dataset.discountPercentageText,

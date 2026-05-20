@@ -6,6 +6,7 @@
   overflow: hidden;
   background: var(--bundler-bg, linear-gradient(135deg, rgb(255 255 255), rgb(246 250 255)));
   color: var(--bundler-text, rgb(24 29 39));
+  text-align: center;
 }
 
 .bundler-widget:empty {
@@ -21,6 +22,7 @@
 .bundler-widget__card {
   display: grid;
   gap: 1rem;
+  justify-items: center;
   padding: 1rem;
   min-width: 0;
 }
@@ -31,7 +33,6 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .bundler-widget__title {
@@ -51,6 +52,7 @@
   display: grid;
   gap: 0.75rem;
   min-width: 0;
+  width: 100%;
 }
 
 .bundler-widget__group {
@@ -127,6 +129,7 @@
   -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
+  text-align: center;
 }
 
 .bundler-widget__carousel::-webkit-scrollbar {
@@ -166,6 +169,7 @@
 }
 
 .bundler-widget__carousel-content {
+  align-items: center;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -178,17 +182,19 @@
   font-weight: 600;
   margin: 0;
   line-height: 1.2;
+  width: 100%;
 }
 
 .bundler-widget__carousel-price {
   font-size: 0.85rem;
   margin: 0;
-  margin-top: auto;
 }
 
 .bundler-widget__carousel-btn {
   width: 100%;
+  min-height: 44px;
   padding: 0.5rem;
+  margin-top: auto;
   border-radius: 6px;
   border: 1px solid var(--bundler-btn-bg, rgb(21 93 252));
   background: transparent;

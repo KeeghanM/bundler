@@ -4,6 +4,43 @@ import type { CartLine, BundleGroup } from "../lib/bundle-types";
 import { listActiveBundleRules, recordBundleMetric } from "../models/bundle-rule.server";
 import { unauthenticated } from "../shopify.server";
 
+type AdminGraphqlClient = {
+  graphql: (
+    query: string,
+    options: { variables: Record<string, unknown> },
+  ) => Promise<{ json: () => Promise<unknown> }>;
+};
+
+type ImageNode = {
+  url?: string | null;
+};
+
+type ProductNode = {
+  id?: string | null;
+  title?: string | null;
+  featuredImage?: ImageNode | null;
+};
+
+type ShopifyVariantNode = {
+  id: string;
+  title: string;
+  price: string;
+  image?: ImageNode | null;
+  product?: ProductNode | null;
+  bundleCollectionIds: string[];
+};
+
+type WidgetVariant = {
+  id: string;
+  productId: string | null;
+  title: string;
+  productTitle: string;
+  price: string;
+  image: string | null;
+  productImage: string | null;
+  collectionIds: string[];
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -23,6 +60,87 @@ const splitQueryValues = (value: string | null): string[] => {
     : [];
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+const getString = (value: unknown): string | undefined => {
+  return typeof value === "string" ? value : undefined;
+};
+
+const parseImageNode = (value: unknown): ImageNode | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return { url: getString(value.url) ?? null };
+};
+
+const parseProductNode = (value: unknown): ProductNode | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    id: getString(value.id) ?? null,
+    title: getString(value.title) ?? null,
+    featuredImage: parseImageNode(value.featuredImage),
+  };
+};
+
+const parseVariantNode = (
+  value: unknown,
+  bundleCollectionIds: string[] = [],
+): ShopifyVariantNode | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const id = getString(value.id);
+  const title = getString(value.title);
+  const price = getString(value.price);
+
+  if (!id || !title || !price) {
+    return undefined;
+  }
+
+  return {
+    id,
+    title,
+    price,
+    image: parseImageNode(value.image),
+    product: parseProductNode(value.product),
+    bundleCollectionIds,
+  };
+};
+
+const getPayloadData = (payload: unknown): Record<string, unknown> | undefined => {
+  return isRecord(payload) && isRecord(payload.data) ? payload.data : undefined;
+};
+
+const getNodeList = (payload: unknown): unknown[] => {
+  const data = getPayloadData(payload);
+  return Array.isArray(data?.nodes) ? data.nodes : [];
+};
+
+const getVariantNodes = (product: unknown): unknown[] => {
+  if (!isRecord(product) || !isRecord(product.variants)) {
+    return [];
+  }
+
+  return Array.isArray(product.variants.nodes) ? product.variants.nodes : [];
+};
+
+const getCollectionProductNodes = (payload: unknown): unknown[] => {
+  const data = getPayloadData(payload);
+
+  if (!data || !isRecord(data.collection) || !isRecord(data.collection.products)) {
+    return [];
+  }
+
+  return Array.isArray(data.collection.products.nodes) ? data.collection.products.nodes : [];
+};
+
 const getCurrentProduct = (
   url: URL,
 ): Pick<CartLine, "productId" | "variantId" | "sku" | "collectionIds"> => {
@@ -34,7 +152,11 @@ const getCurrentProduct = (
   };
 };
 
-async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: number = 20) {
+async function fetchVariantsForGroup(
+  admin: AdminGraphqlClient,
+  group: BundleGroup,
+  limit: number = 20,
+): Promise<WidgetVariant[]> {
   const eligibleVariantGids = new Set<string>();
   const eligibleProductGids = new Set<string>();
   const collectionGids = new Set<string>();
@@ -48,12 +170,12 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
     }
   }
 
-  const resultVariants = [];
+  const resultVariants: ShopifyVariantNode[] = [];
 
   // If there are explicit variants
   if (eligibleVariantGids.size > 0) {
     const ids = Array.from(eligibleVariantGids).slice(0, limit);
-    const res: any = await admin.graphql(`
+    const res = await admin.graphql(`
       query getVariants($ids: [ID!]!) {
         nodes(ids: $ids) {
           ... on ProductVariant {
@@ -70,10 +192,12 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
         }
       }
     `, { variables: { ids } });
-    const data: any = await res.json();
-    if (data.data?.nodes) {
-      for (const node of data.data.nodes) {
-        if (node) resultVariants.push(node);
+    const data = await res.json();
+    for (const node of getNodeList(data)) {
+      const variant = parseVariantNode(node);
+
+      if (variant) {
+        resultVariants.push(variant);
       }
     }
   }
@@ -81,7 +205,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
   // If there are products, fetch their first variants
   if (eligibleProductGids.size > 0 && resultVariants.length < limit) {
     const ids = Array.from(eligibleProductGids).slice(0, limit - resultVariants.length);
-    const res: any = await admin.graphql(`
+    const res = await admin.graphql(`
       query getProducts($ids: [ID!]!) {
         nodes(ids: $ids) {
           ... on Product {
@@ -104,11 +228,13 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
         }
       }
     `, { variables: { ids } });
-    const data: any = await res.json();
-    if (data.data?.nodes) {
-      for (const node of data.data.nodes) {
-        if (node?.variants?.nodes) {
-          resultVariants.push(...node.variants.nodes);
+    const data = await res.json();
+    for (const node of getNodeList(data)) {
+      for (const variantNode of getVariantNodes(node)) {
+        const variant = parseVariantNode(variantNode);
+
+        if (variant) {
+          resultVariants.push(variant);
         }
       }
     }
@@ -119,7 +245,7 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
     const ids = Array.from(collectionGids).slice(0, 3); // check first few collections
     for (const id of ids) {
       if (resultVariants.length >= limit) break;
-      const res: any = await admin.graphql(`
+      const res = await admin.graphql(`
         query getCollection($id: ID!, $first: Int!) {
           collection(id: $id) {
             products(first: $first) {
@@ -144,25 +270,46 @@ async function fetchVariantsForGroup(admin: any, group: BundleGroup, limit: numb
           }
         }
       `, { variables: { id, first: limit - resultVariants.length } });
-      const data: any = await res.json();
-      if (data.data?.collection?.products?.nodes) {
-        for (const product of data.data.collection.products.nodes) {
-          if (product?.variants?.nodes) {
-            resultVariants.push(...product.variants.nodes);
+      const data = await res.json();
+      for (const product of getCollectionProductNodes(data)) {
+        for (const variantNode of getVariantNodes(product)) {
+          const variant = parseVariantNode(variantNode, [id]);
+
+          if (variant) {
+            resultVariants.push(variant);
           }
         }
       }
     }
   }
 
-  return resultVariants.slice(0, limit).map(v => ({
+  const variantsById = new Map<string, ShopifyVariantNode>();
+
+  for (const variant of resultVariants) {
+    const existing = variantsById.get(variant.id);
+    const collectionIds = Array.from(
+      new Set([
+        ...(existing?.bundleCollectionIds ?? []),
+        ...(variant.bundleCollectionIds ?? []),
+      ]),
+    );
+
+    variantsById.set(variant.id, {
+      ...existing,
+      ...variant,
+      bundleCollectionIds: collectionIds,
+    });
+  }
+
+  return Array.from(variantsById.values()).slice(0, limit).map((v) => ({
     id: v.id,
     productId: v.product?.id || null,
     title: v.title,
     productTitle: v.product?.title || '',
     price: v.price,
     image: v.image?.url || null,
-    productImage: v.product?.featuredImage?.url || null
+    productImage: v.product?.featuredImage?.url || null,
+    collectionIds: v.bundleCollectionIds,
   }));
 }
 
@@ -200,7 +347,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   for (const rule of relevantRules) {
     const enrichedGroups = [];
     for (const group of rule.groups) {
-      let variants: any[] = [];
+      let variants: WidgetVariant[] = [];
       if (adminClient) {
         variants = await fetchVariantsForGroup(adminClient, group, limit);
       }
