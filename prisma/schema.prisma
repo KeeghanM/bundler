@@ -61,3 +61,12 @@ model BundleRule {
   @@index([shop, status])
   @@index([shop, priority])
 }
+
+model BundleDiscountSync {
+  shop                String   @id
+  automaticDiscountId String?
+  functionId          String
+  lastSyncedAt        DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

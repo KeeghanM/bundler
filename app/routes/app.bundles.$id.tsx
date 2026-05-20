@@ -2,9 +2,11 @@ import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "re
 import { Form, redirect, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import BundleRuleForm from "../components/bundle-rule-form";
+import { syncBundleDiscount } from "../models/bundle-discount-sync.server";
 import {
   deleteBundleRule,
   getBundleRule,
+  listActiveBundleRules,
   parseBundleRuleFormData,
   updateBundleRule,
 } from "../models/bundle-rule.server";
@@ -50,7 +52,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const id = getRuleId(params);
   const clone = request.clone();
   const formData = await clone.formData();
@@ -58,6 +60,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   if (intent === "delete") {
     await deleteBundleRule(session.shop, id);
+    const activeRules = await listActiveBundleRules(session.shop);
+    const syncResult = await syncBundleDiscount({ shop: session.shop, admin, activeRules });
+
+    if (!syncResult.success) {
+      return { errors: syncResult.errors };
+    }
+
     return redirect("/app");
   }
 
@@ -66,6 +75,13 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   if (!result.success) {
     return { errors: result.errors };
+  }
+
+  const activeRules = await listActiveBundleRules(session.shop);
+  const syncResult = await syncBundleDiscount({ shop: session.shop, admin, activeRules });
+
+  if (!syncResult.success) {
+    return { errors: syncResult.errors };
   }
 
   return redirect(`/app/bundles/${result.rule.id}`);

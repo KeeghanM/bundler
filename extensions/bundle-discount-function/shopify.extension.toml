@@ -11,6 +11,10 @@ target = "cart.lines.discounts.generate.run"
 input_query = "src/run.graphql"
 export = "cart-lines-discounts-generate-run"
 
+[extensions.input.variables]
+namespace = "$app:bundler"
+key = "bundle_rules"
+
 [extensions.build]
 command = ""
 path = "dist/function.wasm"

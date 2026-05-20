@@ -1,0 +1,8 @@
+CREATE TABLE "BundleDiscountSync" (
+    "shop" TEXT NOT NULL PRIMARY KEY,
+    "automaticDiscountId" TEXT,
+    "functionId" TEXT NOT NULL,
+    "lastSyncedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

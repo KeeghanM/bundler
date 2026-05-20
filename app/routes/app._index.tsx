@@ -6,7 +6,13 @@ import type {
 } from "react-router";
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 import {
+  getBundleDiscountSync,
+  isBundleDiscountFunctionConfigured,
+  syncBundleDiscount,
+} from "../models/bundle-discount-sync.server";
+import {
   deleteBundleRule,
+  listActiveBundleRules,
   listBundleRules,
   setBundleRuleStatus,
 } from "../models/bundle-rule.server";
@@ -15,12 +21,17 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const rules = await listBundleRules(session.shop);
+  const discountSync = await getBundleDiscountSync(session.shop);
 
-  return { rules };
+  return {
+    rules,
+    discountSync,
+    isDiscountFunctionConfigured: isBundleDiscountFunctionConfigured(),
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
   const id = formData.get("id");
@@ -31,6 +42,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "delete") {
     await deleteBundleRule(session.shop, id);
+    const activeRules = await listActiveBundleRules(session.shop);
+    const syncResult = await syncBundleDiscount({ shop: session.shop, admin, activeRules });
+
+    if (!syncResult.success) {
+      return { errors: syncResult.errors };
+    }
+
     return { errors: [] };
   }
 
@@ -41,14 +59,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       intent === "activate" ? "active" : "draft",
     );
 
-    return result.success ? { errors: [] } : { errors: result.errors };
+    if (!result.success) {
+      return { errors: result.errors };
+    }
+
+    const activeRules = await listActiveBundleRules(session.shop);
+    const syncResult = await syncBundleDiscount({ shop: session.shop, admin, activeRules });
+
+    return syncResult.success ? { errors: [] } : { errors: syncResult.errors };
   }
 
   return { errors: ["Unsupported bundle action."] };
 };
 
 export default function BundleRulesPage() {
-  const { rules } = useLoaderData<typeof loader>();
+  const { discountSync, isDiscountFunctionConfigured, rules } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const activeRules = rules.filter((rule) => rule.status === "active").length;
 
@@ -175,10 +200,23 @@ export default function BundleRulesPage() {
       </s-section>
 
       <s-section slot="aside" heading="Runtime status">
-        <s-paragraph>
-          Active rules are exposed to the PDP widget API and discount-function
-          runtime config.
-        </s-paragraph>
+        <s-stack direction="block" gap="base">
+          <s-paragraph>
+            Active rules are exposed to the PDP widget API and synced into one
+            automatic Shopify Function discount.
+          </s-paragraph>
+          {!isDiscountFunctionConfigured && (
+            <s-banner tone="critical">
+              Set SHOPIFY_BUNDLE_DISCOUNT_FUNCTION_ID before activating bundle
+              discounts.
+            </s-banner>
+          )}
+          {discountSync?.automaticDiscountId && (
+            <s-paragraph>
+              Discount synced {new Date(discountSync.lastSyncedAt).toLocaleString()}.
+            </s-paragraph>
+          )}
+        </s-stack>
       </s-section>
     </s-page>
   );

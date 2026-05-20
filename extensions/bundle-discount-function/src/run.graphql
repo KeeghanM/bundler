@@ -1,4 +1,4 @@
-query RunInput {
+query RunInput($collectionIds: [ID!] = []) {
   cart {
     lines {
       id
@@ -13,13 +13,17 @@ query RunInput {
           sku
           product {
             id
+            bundleCollectionMemberships: inCollections(ids: $collectionIds) {
+              collectionId
+              isMember
+            }
           }
         }
       }
     }
   }
   discount {
-    metafield(namespace: "bundler", key: "bundle_rules") {
+    metafield(namespace: "$app:bundler", key: "bundle_rules") {
       jsonValue
     }
   }

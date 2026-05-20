@@ -2,7 +2,12 @@ import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "re
 import { Form, redirect, useActionData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import BundleRuleForm from "../components/bundle-rule-form";
-import { createBundleRule, parseBundleRuleFormData } from "../models/bundle-rule.server";
+import { syncBundleDiscount } from "../models/bundle-discount-sync.server";
+import {
+  createBundleRule,
+  listActiveBundleRules,
+  parseBundleRuleFormData,
+} from "../models/bundle-rule.server";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -11,12 +16,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const payload = await parseBundleRuleFormData(request);
   const result = await createBundleRule(session.shop, payload);
 
   if (!result.success) {
     return { errors: result.errors };
+  }
+
+  const activeRules = await listActiveBundleRules(session.shop);
+  const syncResult = await syncBundleDiscount({ shop: session.shop, admin, activeRules });
+
+  if (!syncResult.success) {
+    return { errors: syncResult.errors };
   }
 
   return redirect(`/app/bundles/${result.rule.id}`);

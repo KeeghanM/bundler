@@ -26,11 +26,19 @@ type FunctionCartLine = {
   } | null;
 };
 
+type CollectionMembership = {
+  collectionId?: string;
+  isMember?: boolean;
+};
+
 type ProductVariantMerchandise = {
   __typename: "ProductVariant";
   id: string;
   sku?: string | null;
-  product: { id?: string };
+  product: {
+    id?: string;
+    bundleCollectionMemberships?: CollectionMembership[] | null;
+  };
 };
 
 type FunctionTarget = {
@@ -87,11 +95,13 @@ const parseCollectionIds = (value: string | null | undefined): string[] => {
 };
 
 const parseRules = (value: unknown): BundleRule[] => {
-  if (!Array.isArray(value)) {
+  const rules = isRecord(value) ? value.rules : value;
+
+  if (!Array.isArray(rules)) {
     return [];
   }
 
-  return value.filter((rule): rule is BundleRule => {
+  return rules.filter((rule): rule is BundleRule => {
     if (!isRecord(rule)) {
       return false;
     }
@@ -102,6 +112,22 @@ const parseRules = (value: unknown): BundleRule[] => {
       Array.isArray(rule.groups) &&
       isRecord(rule.discount)
     );
+  });
+};
+
+const getMembershipCollectionIds = (
+  memberships: CollectionMembership[] | null | undefined,
+): string[] => {
+  if (!Array.isArray(memberships)) {
+    return [];
+  }
+
+  return memberships.flatMap((membership) => {
+    if (membership.isMember === true && typeof membership.collectionId === "string") {
+      return [membership.collectionId];
+    }
+
+    return [];
   });
 };
 
@@ -128,12 +154,19 @@ const toCartLine = (line: FunctionCartLine): CartLine | undefined => {
     return undefined;
   }
 
+  const collectionIds = getMembershipCollectionIds(
+    merchandise.product.bundleCollectionMemberships,
+  );
+
   return {
     id: line.id,
     productId,
     variantId: merchandise.id,
     sku: typeof merchandise.sku === "string" ? merchandise.sku : undefined,
-    collectionIds: parseCollectionIds(line.bundleCollectionIds?.value),
+    collectionIds:
+      collectionIds.length > 0
+        ? collectionIds
+        : parseCollectionIds(line.bundleCollectionIds?.value),
     quantity: line.quantity,
   };
 };
