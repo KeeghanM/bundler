@@ -1,86 +1,158 @@
-# 🧭 Engineering Standards and Operating Principles
+# Engineering standards and operating principles
 
-These standards apply across the entire codebase: **React (TypeScript) front end** and **Python back end**.
+These standards apply across the entire codebase, including React TypeScript front ends and Python back ends.
+
 They define how we design, build, test, observe, and review software in production environments.
 
----
+## General principles
 
-## 🚀 General Principles
+### Solve the actual problem
 
-### 💬 Comments
+Solve the real problem, not just the visible symptom.
 
-- Explain the **why**, not the **what**. The code itself should describe what it's doing.
-- Use comments sparingly to clarify non-obvious decisions.
-- Use comments to break up long blocks of code into logical sections using headers (e.g., `// --- Form validation ---`).
-- Avoid over-commenting; prioritize writing self-descriptive code.
+Start by understanding the behaviour, requirements, and failure mode. Prefer a root-cause fix over a local workaround.
 
-### 📏 Component Size & DRY Principles
+Before changing code, consider whether the issue is caused by:
 
-- Apply the **DRY-3 rule**: refactor code into a reusable function or component once it's written for the third time.
-- Keep components under ~300 lines as a general rule of thumb.
-  - If a component exceeds the size limit, break it down into smaller sub-components or extract logic into custom hooks.
-- Prefer small, single-responsibility modules and functions.
-- Python: functions should be easy to name precisely; if naming is difficult, split responsibilities.
+- incorrect configuration
+- missing or incorrect environment variables
+- wrong secrets
+- wrong URLs
+- deployment/runtime settings
+- dependency or version mismatch
+- operator error
+- bad assumptions in local setup
 
-### 🛡️ Guard Clauses & Validation
+Do not turn configuration mistakes into permanent code paths unless there is an explicit product requirement.
 
-- Prefer early returns to reduce nesting and improve readability. This applies to both conditional rendering in components and error handling in functions.
-- For input validation, use Zod as high up the function call stack as possible.
-- Validate inputs immediately and use a guard clause to handle invalid data.
+When a problem is caused by configuration, call that out directly and fix the source configuration.
 
-### 🎁 Destructuring
+### Readability first
 
-- Always use destructuring for objects and arrays to make the code cleaner.
-- Destructure objects and arrays directly in function parameters.
-- Only make exceptions when there's a strong, justifiable reason, and document it with a comment.
+Optimise for code that future engineers can understand quickly.
 
-### 🏗️ Code Structure
+Prefer clear, direct, boring code over clever abstractions.
 
-- No nested `if/else` statements; use early returns, guard clauses, or composition.
-- Avoid deep nesting in general (max ~2 levels).
-- Keep functions small and focused on a single responsibility.
-- Prefer flat, readable code over clever abstractions.
-- Optimize for readability and maintainability over cleverness.
+Good code should make the common path obvious, the edge cases explicit, and the failure modes easy to reason about.
 
-### ⚡ Performance Philosophy
+A readable solution is usually better than a shorter or more abstract solution.
 
-- Optimize for clarity first.
-- Measure before optimizing.
-- Avoid premature optimization.
+Use names, types, schemas, and tests to make intent clear.
 
-### 🔁 Immutability
+### Simplicity and scope control
 
-- Prefer returning new objects over mutating existing ones when it improves clarity.
-- This is especially important in React state updates and domain logic.
+Choose the smallest viable change that fully resolves the problem.
 
----
+Do not avoid larger changes when the requirements demand them, but keep the implementation as small as possible while still solving the problem properly.
 
-## 🧱 Architecture and Responsibilities
+Avoid "sniper edits" that patch one symptom while leaving the broader behaviour broken.
 
-### Backend Layers (Python)
+Avoid broad rewrites unless they are required by the task.
 
-- **Transport**: HTTP routing, serialization, authentication context, request/response mapping.
-- **Application**: use-case orchestration, transactions, policy coordination, boundary translation.
-- **Domain**: business rules, invariants, and pure decision logic.
-- **Infrastructure**: database, external APIs, queues, cache, filesystems, and framework integrations.
+### Comments
+
+Explain the why, not the what. The code itself should describe what it is doing.
+
+Use comments sparingly to clarify non-obvious decisions.
+
+Use comments to break up long blocks of code into logical sections when that improves readability, for example:
+
+```ts
+// --- Form validation ---
+```
+
+Avoid over-commenting. Prioritise writing self-descriptive code.
+
+### Component size and DRY principles
+
+Apply the DRY-3 rule: refactor code into a reusable function or component once it is written for the third time.
+
+Keep components under roughly 300 lines as a general rule of thumb.
+
+If a component exceeds the size limit, break it down into smaller sub-components or extract logic into custom hooks.
+
+Prefer small, single-responsibility modules and functions.
+
+Python functions should be easy to name precisely. If naming is difficult, split responsibilities.
+
+### Guard clauses and validation
+
+Prefer early returns to reduce nesting and improve readability.
+
+This applies to conditional rendering in components and error handling in functions.
+
+For input validation, validate as high up the function call stack as practical.
+
+Validate inputs immediately and use a guard clause to handle invalid data.
+
+### Destructuring
+
+Prefer destructuring for objects and arrays where it improves readability.
+
+Destructure objects and arrays directly in function parameters when that keeps the signature clear.
+
+Avoid destructuring when it makes the code harder to scan or when the original object name carries useful meaning.
+
+### Code structure
+
+Avoid nested `if/else` statements where guard clauses, early returns, or composition would be clearer.
+
+Avoid deep nesting in general. Keep nesting to roughly two levels where practical.
+
+Keep functions small and focused on a single responsibility.
+
+Prefer flat, readable code over clever abstractions.
+
+### Performance philosophy
+
+Optimise for clarity first.
+
+Measure before optimising.
+
+Avoid premature optimisation.
+
+When performance work is required, document the measured bottleneck and the expected improvement.
+
+### Immutability
+
+Prefer returning new objects over mutating existing ones when it improves clarity.
+
+This is especially important in React state updates and domain logic.
+
+Mutation is acceptable where it is local, intentional, and clearer than copying.
+
+## Architecture and responsibilities
+
+### Backend layers - Python
+
+Use clear layers:
+
+- Transport: HTTP routing, serialization, authentication context, request/response mapping
+- Application: use-case orchestration, transactions, policy coordination, boundary translation
+- Domain: business rules, invariants, and pure decision logic
+- Infrastructure: database, external APIs, queues, cache, filesystems, and framework integrations
 
 Rules:
 
 - Keep business logic out of route/handler layers.
 - Domain code must not depend on transport details.
 - Infrastructure should be called through application-defined interfaces where practical.
+- Application code coordinates use cases and policies.
+- Transport code maps the outside world into application calls.
 
-### Error Boundaries and Propagation
+### Error boundaries and propagation
 
-- Domain layer raises explicit domain exceptions.
-- Application layer translates domain exceptions into user-facing outcomes.
-- Transport layer maps outcomes/errors to HTTP responses.
-- Infrastructure layer never swallows exceptions silently.
-- Log errors at boundaries, not deep inside every helper.
+Domain layer raises explicit domain exceptions or returns explicit domain errors.
 
----
+Application layer translates domain exceptions into user-facing outcomes.
 
-## 🛡️ Trust Boundaries and Schema-First Development
+Transport layer maps outcomes/errors to HTTP responses.
+
+Infrastructure layer must not swallow exceptions silently.
+
+Log errors at boundaries, not deep inside every helper.
+
+## Trust boundaries and schema-first development
 
 Schema-first means:
 
@@ -91,21 +163,19 @@ Schema-first means:
 
 Tool standards and rationale:
 
-- **Zod (TypeScript)**: runtime validation with type inference at UI/API boundaries.
-- **Pydantic (Python)**: runtime validation and typed models for API/service boundaries.
-- **React Query**: canonical server-state management (cache, retries, stale handling).
-- **Zustand**: lightweight client-only state when local state is insufficient.
+- Zod for TypeScript runtime validation with type inference at UI/API boundaries.
+- Pydantic for Python runtime validation and typed models for API/service boundaries.
+- React Query for canonical server-state management, including cache, retries, and stale handling.
+- Zustand for client-only state when local React state is insufficient.
 
----
+## Naming conventions
 
-## 📛 Naming Conventions
-
-### React / TypeScript
+### React and TypeScript
 
 - Components: `PascalCase`
 - Files: `kebab-case`
-- Variables/functions: `camelCase`, verb-based for functions (e.g., `getUserProfile`, `calculateTotal`, `validatePayment`)
-- Constants: `SCREAMING_SNAKE_CASE` for true constants (e.g., `API_BASE_URL`), `camelCase` for configuration
+- Variables/functions: `camelCase`, verb-based for functions, for example `getUserProfile`, `calculateTotal`, `validatePayment`
+- Constants: `SCREAMING_SNAKE_CASE` for true constants, for example `API_BASE_URL`; `camelCase` for configuration
 - Types: `PascalCase`
 - Tests: `*.test.ts` or `*.spec.ts`
 
@@ -117,21 +187,25 @@ Tool standards and rationale:
 - Constants: `SCREAMING_SNAKE_CASE`
 - Tests: `test_*.py`
 
----
+## Frontend structure and state
 
-## ⚛️ Frontend Structure and State
+### React component structure
 
-### React Component Structure
+Use this order unless the existing file structure gives a good reason not to:
 
-- External imports first, alphabetized.
-- Internal imports next, alphabetized and grouped by type (`@components`, `@db`, `@auth`, etc.).
-- Define types near where they're used.
-- Place React hooks at the top of the component.
-- Follow with guard clauses for loading or error states.
-- Place the main component logic below the early returns.
-- Use `export default function` with a descriptive name.
+1. External imports, alphabetised.
+2. Internal imports, alphabetised and grouped by type.
+3. Types near where they are used.
+4. React hooks at the top of the component.
+5. Guard clauses for loading or error states.
+6. Main component logic.
+7. Render output.
 
-### Import Aliases
+Use `export default function` with a descriptive name for page-level or primary components.
+
+### Import aliases
+
+Use the repo's configured aliases. Common aliases include:
 
 - `@components/*`
 - `@db/*`
@@ -141,34 +215,61 @@ Tool standards and rationale:
 - `@lib/*`
 - `@utils/*`
 
-### Data Fetching (React Query)
+Do not invent new aliases without updating the relevant configuration and documentation.
 
-- Use React Query for all data fetching.
-- Organize hooks by domain within a dedicated file in the `@hooks` directory.
-- Follow the naming convention: `use[Entity]Queries()`.
-- Use factory functions for queries that require parameters (e.g., `usePuzzleQuery(arcId)`).
-- Destructure the `data` and `isLoading` properties from the query hook results.
-- Use mutations with a consistent pattern, e.g., `modifyPuzzle.mutate(updatedPuzzle)`.
+### Data fetching - React Query
 
-### Server State vs Client State
+Use React Query for server state and data fetching.
 
-- Use React Query for server state.
-- Zustand is for client-side state only; do not use it for server state.
-- Things like which screens are open and user preferences can go in Zustand.
-- Do not duplicate server state into client state without explicit justification.
-- Prefer derived state over duplicated state.
-- Avoid syncing React Query responses into Zustand except for clearly documented reasons.
+Organise hooks by domain within a dedicated file in the `@hooks` directory.
 
----
+Follow clear naming conventions, such as:
 
-## 🟦 TypeScript Standards
+```ts
+useAccountQuery()
+useAccountMutations()
+usePuzzleQuery(arcId)
+```
 
-### Strict Mode Requirements
+Use factory functions for queries that require parameters.
 
-Ensure the following strict mode options are enabled in `tsconfig.json`:
+Destructure commonly used properties from query hook results when it improves readability, for example:
+
+```ts
+const { data, isLoading, error } = useAccountQuery()
+```
+
+Use mutations with a consistent pattern, for example:
+
+```ts
+modifyPuzzle.mutate(updatedPuzzle)
+```
+
+### Server state vs client state
+
+Use React Query for server state.
+
+Use Zustand for client-side state only.
+
+Suitable client state examples:
+
+- open/closed screens
+- local UI preferences
+- unsaved local workflow state
+
+Do not duplicate server state into client state without explicit justification.
+
+Prefer derived state over duplicated state.
+
+Avoid syncing React Query responses into Zustand except for clearly documented reasons.
+
+## TypeScript standards
+
+### Strict mode requirements
+
+Ensure strict mode options are enabled in `tsconfig.json`:
 
 ```jsonc
-// tsconfig.json
 {
   "compilerOptions": {
     "strict": true,
@@ -186,79 +287,57 @@ Ensure the following strict mode options are enabled in `tsconfig.json`:
 }
 ```
 
-### Type Strictness
+### Type strictness
 
-- No `any` - ever. Use `unknown` if type is truly unknown.
-- No type assertions (`as SomeType`) unless absolutely necessary with clear justification.
-- No `@ts-ignore` or `@ts-expect-error` without explicit explanation.
-- These rules apply to test code as well as production code.
+Avoid `any` in application code.
 
-#### Type Definitions
+Use `unknown` when a value is truly unknown, then narrow it safely.
 
-Prefer `type` over `interface`. Use `type` for data structures and shapes. Reserve `interface` ONLY for behavior contracts (ports, adapters, dependency injection):
+If `any` is unavoidable at an external boundary, isolate it, convert it to a typed value immediately, and document why it is required.
 
-```typescript
-// Correct - type for data structures
+Avoid type assertions such as `as SomeType` unless necessary. If used, keep the assertion close to the validation or boundary that justifies it.
+
+Do not use `@ts-ignore` or `@ts-expect-error` without an explicit explanation.
+
+These rules apply to test code as well as production code.
+
+### Type definitions
+
+Prefer `type` over `interface` for data structures and shapes.
+
+Reserve `interface` for behaviour contracts, such as ports, adapters, and dependency injection.
+
+```ts
 type User = {
-  readonly id: string;
-  readonly email: string;
-  readonly role: UserRole;
-};
+  readonly id: string
+  readonly email: string
+  readonly role: UserRole
+}
 
-type PaymentRequest = {
-  amount: number;
-  currency: string;
-};
-
-// Correct - interface for behavior contracts
 interface Logger {
-  log(message: string): void;
-  error(message: string, error: Error): void;
-}
-
-interface PaymentGateway {
-  processPayment(payment: Payment): Promise<PaymentResult>;
-  refund(transactionId: string): Promise<RefundResult>;
-}
-
-// Wrong - interface for data structure
-interface User {
-  id: string;
-  email: string;
+  log(message: string): void
+  error(message: string, error: Error): void
 }
 ```
 
-### Type vs. Interface Distinction
+Use explicit typing where it aids clarity, but leverage inference where appropriate.
 
-Why this distinction?
+Use utility types effectively, including `Pick`, `Omit`, `Partial`, and `Required`.
 
-- Types describe what data IS (structure, shape).
-- Interfaces describe what code DOES (behavior, contracts).
-- Interfaces support declaration merging and extension, useful for dependency injection and plugin systems.
-- Types are more flexible for complex type operations (unions, intersections, mapped types).
-- Use explicit typing where it aids clarity, but leverage inference where appropriate.
-- Utilize utility types effectively (Pick, Omit, Partial, Required, etc.).
-- Create domain-specific types (e.g., UserId, PaymentId) for type safety.
-- Use Zod or any other Standard Schema compliant schema library to create types, by defining schemas first.
+Create domain-specific types where they improve safety and clarity.
 
-```typescript
-// Good - Branded types for type safety
-type UserId = string & { readonly brand: unique symbol };
-type PaymentAmount = number & { readonly brand: unique symbol };
-
-// Avoid - No type distinction
-type UserId = string;
-type PaymentAmount = number;
+```ts
+type UserId = string & { readonly brand: unique symbol }
+type PaymentAmount = number & { readonly brand: unique symbol }
 ```
 
-### Schema-First Development with Zod
+### Schema-first development with Zod
 
-Always define your schemas first, then derive types from them:
+Define schemas first when runtime validation is required, then derive types from them.
 
-```typescript
-import { z } from "zod";
+```ts
+import { z } from 'zod'
 
-// Define schemas first - these provide runtime validation
 const AddressDetailsSchema = z.object({
   houseNumber: z.string(),
   houseName: z.string().optional(),
@@ -266,168 +345,77 @@ const AddressDetailsSchema = z.object({
   addressLine2: z.string().optional(),
   city: z.string().min(1),
   postcode: z.string().regex(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i),
-});
+})
 
-const PayingCardDetailsSchema = z.object({
-  cvv: z.string().regex(/^\d{3,4}$/),
-  token: z.string().min(1),
-});
+type AddressDetails = z.infer<typeof AddressDetailsSchema>
 
-const PostPaymentsRequestV3Schema = z.object({
-  cardAccountId: z.string().length(16),
-  amount: z.number().positive(),
-  source: z.enum(["Web", "Mobile", "API"]),
-  accountStatus: z.enum(["Normal", "Restricted", "Closed"]),
-  lastName: z.string().min(1),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  payingCardDetails: PayingCardDetailsSchema,
-  addressDetails: AddressDetailsSchema,
-  brand: z.enum(["Visa", "Mastercard", "Amex"]),
-});
-
-// Derive types from schemas
-type AddressDetails = z.infer<typeof AddressDetailsSchema>;
-type PayingCardDetails = z.infer<typeof PayingCardDetailsSchema>;
-type PostPaymentsRequestV3 = z.infer<typeof PostPaymentsRequestV3Schema>;
-
-// Use schemas at runtime boundaries
-export const parsePaymentRequest = (data: unknown): PostPaymentsRequestV3 => {
-  return PostPaymentsRequestV3Schema.parse(data);
-};
-
-// Example of schema composition for complex domains
-const BaseEntitySchema = z.object({
-  id: z.string().uuid(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-const CustomerSchema = BaseEntitySchema.extend({
-  email: z.string().email(),
-  tier: z.enum(["standard", "premium", "enterprise"]),
-  creditLimit: z.number().positive(),
-});
-
-type Customer = z.infer<typeof CustomerSchema>;
+export const parseAddressDetails = (data: unknown): AddressDetails => {
+  return AddressDetailsSchema.parse(data)
+}
 ```
 
-### When Schemas Are Required vs. Optional
+### When schemas are required
 
-Not all types need schemas. Use this decision framework to determine when runtime validation is necessary:
+Use schemas when:
 
-Decision Framework
-Ask these questions in order:
+- data crosses a trust boundary
+- data has validation rules
+- data is a shared contract between systems
+- data is used in test factories and schema validation would catch invalid fixtures
+- input comes from APIs, URLs, forms, events, queues, files, or external integrations
 
-- Does data cross a trust boundary? (external -> internal)
-  - YES -> Schema required
-  - NO -> Continue
-- Does type have validation rules? (format, constraints, enums)
-  - YES -> Schema required
-  - NO -> Continue
-- Is this a shared data contract? (between systems)
-  - YES -> Schema required
-  - NO -> Continue
-- Used in test factories?
-  - YES -> Schema required (for validation)
-  - NO -> Continue
-- Pure internal type? (utility, state, behavior)
-  - YES -> Type is fine (no schema needed)
-  - NO -> Schema recommended for safety
+Examples:
 
-#### Schema REQUIRED Examples
-
-```typescript
-// API responses (trust boundary)
+```ts
 const UserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
-  role: z.enum(["admin", "user", "guest"]),
-});
-const user = UserSchema.parse(apiResponse);
+  role: z.enum(['admin', 'user', 'guest']),
+})
 
-// Business validation rules
-const PaymentSchema = z.object({
-  amount: z.number().positive().max(10000),
-  email: z.string().email(),
-  cardNumber: z.string().regex(/^\d{16}$/),
-});
-
-// Shared data contracts (events, messages)
-const OrderCreatedEventSchema = z.object({
-  orderId: z.string(),
-  customerId: z.string(),
-  items: z.array(z.object({ sku: z.string(), quantity: z.number() })),
-});
-
-// Test data factories (ensures test data validity)
-const getMockUser = (): User => {
-  return UserSchema.parse({
-    id: "550e8400-e29b-41d4-a716-446655440000",
-    email: "test@example.com",
-    role: "user",
-  });
-};
+const user = UserSchema.parse(apiResponse)
 ```
 
-#### Schema OPTIONAL Examples
+### When schemas are optional
 
-```typescript
-// Pure internal types (no external data, no validation)
-type Point = { readonly x: number; readonly y: number };
-type CartTotal = { subtotal: number; tax: number; total: number };
+Plain TypeScript types are sufficient for:
 
-// Result/Option types (internal logic)
-type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
+- pure internal types
+- utility types
+- behaviour contracts
+- component props that do not cross a trust boundary
+- internal state machines
+- compile-time-only transformations
 
-// TypeScript utilities (compile-time only)
-type UserProfile = Pick<User, "id" | "name">;
-type PartialUser = Partial<User>;
+Example:
 
-// Branded primitives (compile-time nominal types)
-type UserId = string & { readonly brand: unique symbol };
-type PaymentId = string & { readonly brand: unique symbol };
-
-// Behavior contracts (interface for behavior, not data)
-interface Logger {
-  log(message: string): void;
-  error(message: string, error: Error): void;
-}
-
-// Internal state machines
-type LoadingState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: unknown }
-  | { status: "error"; error: Error };
-
-// Component props (usually - internal to app)
-type ButtonProps = {
-  label: string;
-  onClick: () => void;
-  variant?: "primary" | "secondary";
-};
-// Exception: If props come from URL params or API -> schema required
+```ts
+type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E }
 ```
 
-**Summary:** Use schemas at trust boundaries and for validation. For internal types, utilities, and behavior contracts, plain TypeScript types are sufficient.
+## Python standards
 
----
+### Typing and analysis
 
-## 🐍 Python Standards
+Use type hints for public APIs and domain logic.
 
-### Typing and Analysis
+Static type checking is enforced in CI.
 
-- Use type hints for public APIs and domain logic.
-- Static type checking is enforced in CI.
-- Avoid `Any` except at explicit boundary conversion points.
+Avoid `Any` except at explicit boundary conversion points.
 
-### Schema-First Development with Pydantic
+If `Any` is unavoidable, isolate it and convert it into a typed value as soon as possible.
 
-- Define Pydantic models at trust boundaries (requests, events, external integrations).
-- Validate raw input immediately and only pass validated models into business logic.
-- Use `model_validate` on untrusted input and `model_dump` for outbound serialization.
+### Schema-first development with Pydantic
 
-```python
+Define Pydantic models at trust boundaries, including requests, events, and external integrations.
+
+Validate raw input immediately and only pass validated models into business logic.
+
+Use `model_validate` on untrusted input and `model_dump` for outbound serialization.
+
+```py
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -439,42 +427,53 @@ class PaymentRequest(BaseModel):
     source: Literal["web", "mobile", "api"]
 
 
-class PaymentResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    status: Literal["approved", "declined"]
-    authorization_id: str | None = None
-
-
 def parse_payment_request(data: dict) -> PaymentRequest:
     return PaymentRequest.model_validate(data)
 ```
 
-### Async and Concurrency
+### Async and concurrency
 
-- Default to sync code unless async provides measurable value.
-- Use async for I/O-bound paths only; avoid mixed sync/async call chains when possible.
-- Background jobs must be idempotent and safe to retry.
-- Shared mutable state across threads/processes is prohibited unless explicitly synchronized.
+Follow the framework's existing concurrency model.
 
-### Formatting and Linting
+Default to sync code unless the stack is already async or async provides clear value.
 
-- Use standardized formatting and linting tools.
-- All checks are enforced in CI.
+Use async for I/O-bound paths where it fits the framework.
 
----
+Avoid mixed sync/async call chains when possible.
 
-## 🔐 Security Baseline
+Background jobs must be idempotent and safe to retry.
 
-- Validate all external inputs.
-- Never trust client-provided identifiers without auth/ownership checks.
-- Enforce least privilege for infrastructure permissions.
-- Secrets must come from environment variables or a secret manager.
-- Never hard-code credentials, tokens, or keys.
-- Do not log secrets, access tokens, or PII.
+Shared mutable state across threads/processes is prohibited unless explicitly synchronised.
 
----
+### Formatting and linting
 
-## 📊 Observability, Logging, and Tracing
+Use the repo's standard formatting and linting tools.
+
+All checks must be enforced in CI.
+
+Do not introduce formatting that conflicts with the repo's configured tools.
+
+## Security baseline
+
+Validate all external inputs.
+
+Never trust client-provided identifiers without auth and ownership checks.
+
+Enforce least privilege for infrastructure permissions.
+
+Secrets must come from environment variables or a secret manager.
+
+Never hard-code credentials, tokens, or keys.
+
+Do not log secrets, access tokens, or PII.
+
+Do not weaken security controls to make implementation or tests easier.
+
+Do not bypass authentication, authorisation, CSRF protection, CORS rules, TLS checks, input validation, rate limits, or audit logging unless the requirements explicitly call for it.
+
+Never add fallback credentials, hard-coded secrets, test-only production paths, or silent failure paths for security-sensitive behaviour.
+
+## Observability, logging, and tracing
 
 Minimum expectations:
 
@@ -483,13 +482,11 @@ Minimum expectations:
 - Background jobs log start, completion, and failure.
 - Logs are structured and contextual.
 - Errors are logged at boundaries with enough context for triage.
-- Metrics/traces are captured using OpenTelemetry, ideally with automatic instrumentation.
-- Logs should print locally, and be sent to OpenTelemetry in production.
-- Logs must never contain sensitive information (PII, secrets, tokens).
-- Standardised log formats and fields should be used for consistency and queryability.
-  - Use a LOGGER wrapper to enforce structure
-
-Logging examples:
+- Metrics/traces are captured using OpenTelemetry where practical.
+- Logs print locally and are sent to OpenTelemetry in production.
+- Logs never contain sensitive information, including PII, secrets, or tokens.
+- Standardised log formats and fields are used for consistency and queryability.
+- A logger wrapper should be used where practical to enforce structure.
 
 Good:
 
@@ -509,469 +506,272 @@ Bad:
 failed request for user john.doe@example.com token=abc123
 ```
 
----
+## Testing principles
 
-## 🧪 Testing Principles
+Tests should verify expected behaviour.
 
-- Behavior-driven testing.
-- No "unit tests" - this term is not helpful. Tests should verify expected behavior, treating implementation as a black box.
-- Test through the public API exclusively - internals should be invisible to tests.
-- No 1:1 mapping between test files and implementation files.
-- Tests that examine internal implementation details are wasteful and should be avoided.
-- Coverage targets: 100% coverage should be expected at all times, but these tests must ALWAYS be based on business behavior, not implementation details.
-- Tests must document expected business behavior.
-- Add tests for every new behavior and bug fix.
-- All test code must follow the same TypeScript strict mode rules as production code.
+Treat implementation as a black box where practical.
 
-### Testing Tools
+Test through public APIs, user-visible behaviour, or stable service boundaries.
 
-- Jest or Vitest for testing frameworks.
+Avoid 1:1 mapping between test files and implementation files when it encourages implementation-coupled tests.
+
+Avoid tests that examine internal implementation details.
+
+Aim for comprehensive behaviour coverage. Do not add brittle tests purely to satisfy a coverage number.
+
+Add tests for every new behaviour and bug fix.
+
+All test code must follow the same TypeScript strict mode rules as production code.
+
+### Testing tools
+
+Use the repo's chosen test tools. Common defaults:
+
+- Jest or Vitest for TypeScript tests.
 - React Testing Library for React components.
-- MSW (Mock Service Worker) for API mocking when needed.
+- MSW for API mocking where needed.
 - Pytest for backend tests.
-- Prefer integration-style tests for route-service-domain flows.
-- Use real or lightweight test databases where practical.
+- Integration-style tests for route-service-domain flows.
+- Real or lightweight test databases where practical.
 
-### Schema Usage in Tests
+### Schema usage in tests
 
-**CRITICAL:** Tests must use real schemas and types from the main project, not redefine their own.
+Tests must use real schemas and types from the main project, not redefine their own.
 
-```typescript
-// Wrong - Defining schemas in test files
+Wrong:
+
+```ts
 const ProjectSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
-  ownerId: z.string().nullable(),
   name: z.string(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-});
-
-// Correct - Import schemas from the shared schema package
-import { ProjectSchema, type Project } from "@your-org/schemas";
+})
 ```
 
-### Why Schema Usage in Tests Matters
+Correct:
 
-- Type Safety: Ensures tests use the same types as production code.
-- Consistency: Changes to schemas automatically propagate to tests.
-- Maintainability: Single source of truth for data structures.
-- Prevents Drift: Tests cannot accidentally diverge from real schemas.
-
-### Implementation Details for Schema Usage in Tests
-
-- All domain schemas should be exported from a shared schema package or module.
-- Test files should import schemas from the shared location.
-- If a schema is not exported yet, add it to the exports rather than duplicating it.
-- Mock data factories should use the real types derived from real schemas.
-
-```typescript
-// Correct - Test factories using real schemas
-import { type Project, ProjectSchema } from "@your-org/schemas";
-
-const getMockProject = (overrides?: Partial<Project>): Project => {
-  const baseProject = {
-    id: "proj_123",
-    workspaceId: "ws_456",
-    ownerId: "user_789",
-    name: "Test Project",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  const projectData = { ...baseProject, ...overrides };
-
-  // Validate against real schema to catch type mismatches
-  return ProjectSchema.parse(projectData);
-};
+```ts
+import { ProjectSchema, type Project } from '@your-org/schemas'
 ```
 
-### Schema Usage in Tests (Python)
+If a schema is not exported yet, add it to the exports rather than duplicating it.
 
-- Tests must import Pydantic models from the application, not redefine them.
-- Factory helpers should validate data with `model_validate` to catch invalid fixtures early.
+Mock data factories should use real types derived from real schemas.
 
-```python
-import pytest
-from pydantic import ValidationError
-from app.schemas.payment import PaymentRequest
+### Test data pattern
 
+Use factory functions with optional overrides for test data.
 
-def get_mock_payment_request(overrides: dict | None = None) -> PaymentRequest:
-    base = {
-        "card_account_id": "1234567890123456",
-        "amount": 100,
-        "source": "web",
-    }
-    data = {**base, **(overrides or {})}
-    return PaymentRequest.model_validate(data)
-
-
-def test_rejects_negative_amount() -> None:
-    with pytest.raises(ValidationError):
-        get_mock_payment_request({"amount": -100})
-```
-
-### Test Organization
-
-```text
-src/
-  features/
-    payment/
-      payment-processor.ts
-      payment-validator.ts
-      payment-processor.test.ts // The validator is an implementation detail. Validation is covered by testing business behavior.
-```
-
-### Test Data Pattern
-
-Use factory functions with optional overrides for test data:
-
-```typescript
-const getMockPaymentPostPaymentRequest = (
-  overrides?: Partial<PostPaymentsRequestV3>,
-): PostPaymentsRequestV3 => {
-  return {
-    cardAccountId: "1234567890123456",
-    amount: 100,
-    source: "Web",
-    accountStatus: "Normal",
-    lastName: "Doe",
-    dateOfBirth: "1980-01-01",
-    payingCardDetails: {
-      cvv: "123",
-      token: "token",
-    },
-    addressDetails: getMockAddressDetails(),
-    brand: "Visa",
-    ...overrides,
-  };
-};
-
-const getMockAddressDetails = (overrides?: Partial<AddressDetails>): AddressDetails => {
-  return {
-    houseNumber: "123",
-    houseName: "Test House",
-    addressLine1: "Test Address Line 1",
-    addressLine2: "Test Address Line 2",
-    city: "Test City",
-    ...overrides,
-  };
-};
-```
-
-### Key Principles for Test Data Patterns
-
-- Always return complete objects with sensible defaults.
-- Accept optional `Partial<T>` overrides.
-- Build incrementally - extract nested object factories as needed.
-- Compose factories for complex objects.
-- Consider using a test data builder pattern for very complex objects.
-
-### Validating Test Data
-
-When schemas exist, validate factory output to catch test data issues early:
-
-```typescript
-import { type Payment, PaymentSchema } from "../schemas/payment.schema";
-
+```ts
 const getMockPayment = (overrides?: Partial<Payment>): Payment => {
   const basePayment = {
     amount: 100,
-    currency: "GBP",
-    cardId: "card_123",
-    customerId: "cust_456",
-  };
+    currency: 'GBP',
+    cardId: 'card_123',
+    customerId: 'cust_456',
+  }
 
-  const paymentData = { ...basePayment, ...overrides };
+  const paymentData = { ...basePayment, ...overrides }
 
-  // Validate against real schema to catch type mismatches
-  return PaymentSchema.parse(paymentData);
-};
-
-// This catches errors in test setup:
-const payment = getMockPayment({
-  amount: -100,
-});
+  return PaymentSchema.parse(paymentData)
+}
 ```
 
-### Why Validate Test Data
+Key principles:
 
-- Ensures test factories produce valid data that matches production schemas.
-- Catches test data bugs immediately rather than in test assertions.
-- Documents constraints (e.g., "amount must be positive") in schema, not in every test.
-- Prevents tests from passing with invalid data that would fail in production.
+- Return complete objects with sensible defaults.
+- Accept optional `Partial<T>` overrides.
+- Build incrementally.
+- Extract nested object factories as needed.
+- Compose factories for complex objects.
+- Validate factory output when schemas exist.
 
-### Anti-Patterns in Tests
+### Anti-patterns in tests
 
-Avoid these test smells:
+Avoid implementation-focused tests:
 
-```typescript
-// Bad - Implementation-focused test
-it("should call validateAmount", () => {
-  const spy = jest.spyOn(validator, "validateAmount");
-  processPayment(payment);
-  expect(spy).toHaveBeenCalled();
-});
+```ts
+it('should call validateAmount', () => {
+  const spy = jest.spyOn(validator, 'validateAmount')
+  processPayment(payment)
+  expect(spy).toHaveBeenCalled()
+})
+```
 
-// Good - Behavior-focused test
-it("should reject payments with negative amounts", () => {
-  const payment = getMockPayment({ amount: -100 });
-  const result = processPayment(payment);
-  expect(result.success).toBe(false);
-  expect(result.error.message).toBe("Invalid amount");
-});
+Prefer behaviour-focused tests:
 
-// Bad - Using let and beforeEach (shared mutable state)
-let payment: Payment;
+```ts
+it('should reject payments with negative amounts', () => {
+  const payment = getMockPayment({ amount: -100 })
+  const result = processPayment(payment)
+
+  expect(result.success).toBe(false)
+  expect(result.error.message).toBe('Invalid amount')
+})
+```
+
+Avoid shared mutable state:
+
+```ts
+let payment: Payment
+
 beforeEach(() => {
-  payment = { amount: 100 };
-});
-it("should process payment", () => {
-  processPayment(payment);
-});
-
-// Good - Factory functions (isolated, immutable)
-it("should process payment", () => {
-  const payment = getMockPayment({ amount: 100 });
-  processPayment(payment);
-});
+  payment = { amount: 100 }
+})
 ```
 
-### Achieving 100% Coverage Through Business Behavior
+Prefer isolated factories:
 
-Example showing how validation code gets 100% coverage without testing it directly:
-
-```typescript
-// payment-validator.ts (implementation detail)
-export const validatePaymentAmount = (amount: number): boolean => {
-  return amount > 0 && amount <= 10000;
-};
-
-export const validateCardDetails = (card: PayingCardDetails): boolean => {
-  return /^\d{3,4}$/.test(card.cvv) && card.token.length > 0;
-};
-
-// payment-processor.ts (public API)
-export const processPayment = (request: PaymentRequest): Result<Payment, PaymentError> => {
-  // Validation is used internally but not exposed
-  if (!validatePaymentAmount(request.amount)) {
-    return { success: false, error: new PaymentError("Invalid amount") };
-  }
-
-  if (!validateCardDetails(request.payingCardDetails)) {
-    return { success: false, error: new PaymentError("Invalid card details") };
-  }
-
-  // Process payment...
-  return { success: true, data: executedPayment };
-};
-
-// payment-processor.test.ts
-describe("Payment processing", () => {
-  // These tests achieve 100% coverage of validation code
-  // without directly testing the validator functions
-
-  it("should reject payments with negative amounts", () => {
-    const payment = getMockPaymentPostPaymentRequest({ amount: -100 });
-    const result = processPayment(payment);
-
-    expect(result.success).toBe(false);
-    expect(result.error.message).toBe("Invalid amount");
-  });
-
-  it("should reject payments exceeding maximum amount", () => {
-    const payment = getMockPaymentPostPaymentRequest({ amount: 10001 });
-    const result = processPayment(payment);
-
-    expect(result.success).toBe(false);
-    expect(result.error.message).toBe("Invalid amount");
-  });
-
-  it("should reject payments with invalid CVV format", () => {
-    const payment = getMockPaymentPostPaymentRequest({
-      payingCardDetails: { cvv: "12", token: "valid-token" },
-    });
-    const result = processPayment(payment);
-
-    expect(result.success).toBe(false);
-    expect(result.error.message).toBe("Invalid card details");
-  });
-
-  it("should process valid payments successfully", () => {
-    const payment = getMockPaymentPostPaymentRequest({
-      amount: 100,
-      payingCardDetails: { cvv: "123", token: "valid-token" },
-    });
-    const result = processPayment(payment);
-
-    expect(result.success).toBe(true);
-    expect(result.data.status).toBe("completed");
-  });
-});
+```ts
+it('should process payment', () => {
+  const payment = getMockPayment({ amount: 100 })
+  processPayment(payment)
+})
 ```
 
-### React Component Testing
+### React component testing
 
-```typescript
-// Good - testing user-visible behavior
+Test user-visible behaviour.
+
+```tsx
 describe('PaymentForm', () => {
-  it('should show error when submitting invalid amount', async () => {
-    render(<PaymentForm />);
+  it('shows an error when submitting an invalid amount', async () => {
+    render(<PaymentForm />)
 
-    const amountInput = screen.getByLabelText('Amount');
-    const submitButton = screen.getByRole('button', { name: 'Submit Payment' });
+    const amountInput = screen.getByLabelText('Amount')
+    const submitButton = screen.getByRole('button', { name: 'Submit payment' })
 
-    await userEvent.type(amountInput, '-100');
-    await userEvent.click(submitButton);
+    await userEvent.type(amountInput, '-100')
+    await userEvent.click(submitButton)
 
-    expect(screen.getByText('Amount must be positive')).toBeInTheDocument();
-  });
-});
+    expect(screen.getByText('Amount must be positive')).toBeInTheDocument()
+  })
+})
 ```
 
----
+## Code review and PR standards
 
-## 🔍 Code Review and PR Standards
+Prefer small, focused PRs when possible.
 
-- Prefer small, focused PRs when possible.
-- Every PR must explain intent, context, and trade-offs.
-- At least one approving review is required before merge.
-- CI must pass (formatting, linting, typing, tests).
-- New behavior requires tests or an explicit rationale when tests are not feasible.
+Every PR must explain:
 
-### 📝 Commit Message Standard
+- intent
+- context
+- trade-offs
+- tests run
+- rollout/migration impact
+- risks and follow-ups
 
-- Commit messages must follow the **Conventional Commits** specification.
-- Preferred format: `type(scope): concise imperative summary`
-- Supported types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `revert`.
-- If Commitizen (or equivalent tooling) is not installed, write commit messages manually in Conventional Commits format.
-- Use `!` in the header or a `BREAKING CHANGE:` footer for breaking changes.
+At least one approving review is required before merge.
 
----
+CI must pass, including formatting, linting, typing, and tests.
 
-## 🏗️ Infrastructure, Data, and Deployment (Mandatory)
+New behaviour requires tests or an explicit rationale when tests are not feasible.
 
-### ✅ Infrastructure as Code (ALWAYS)
+### Commit message standard
 
-- All infrastructure must be defined as code.
-- Manual console changes are prohibited.
-- Changes are reviewed via PR and applied via CI/CD.
+Commit messages must follow the Conventional Commits specification.
 
-### ✅ Database Migrations (ALWAYS)
+Preferred format:
 
-- All schema changes use versioned migrations.
-- Manual SQL changes in production are prohibited.
-
-### ✅ Data Access (ALWAYS)
-
-- Use an ORM by default.
-- Raw SQL is allowed only when necessary, isolated, and reviewed.
-
----
-
-## 🧰 Tooling and Enforcement
-
-- Formatting, linting, type checking, and tests must run in CI.
-- CI blocks merges on failure.
-- `lint-staged` is required for local pre-commit quality checks.
-- Standards are enforceable, not advisory.
-
----
-
-## 💡 Example Patterns
-
-### Error Handling
-
-Use Result types or early returns:
-
-```typescript
-// Good - Result type pattern
-type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
-
-const processPayment = (payment: Payment): Result<ProcessedPayment, PaymentError> => {
-  if (!isValidPayment(payment)) {
-    return { success: false, error: new PaymentError("Invalid payment") };
-  }
-
-  if (!hasSufficientFunds(payment)) {
-    return { success: false, error: new PaymentError("Insufficient funds") };
-  }
-
-  return { success: true, data: executePayment(payment) };
-};
-
-// Also good - early returns with exceptions
-const processPaymentWithExceptions = (payment: Payment): ProcessedPayment => {
-  if (!isValidPayment(payment)) {
-    throw new PaymentError("Invalid payment");
-  }
-
-  if (!hasSufficientFunds(payment)) {
-    throw new PaymentError("Insufficient funds");
-  }
-
-  return executePayment(payment);
-};
+```text
+type(scope): concise imperative summary
 ```
 
-### Testing Behavior
+Supported types:
 
-```typescript
-// Good - tests behavior through public API
-describe("PaymentProcessor", () => {
-  it("should decline payment when insufficient funds", () => {
-    const payment = getMockPaymentPostPaymentRequest({ amount: 1000 });
-    const account = getMockAccount({ balance: 500 });
+- `feat`
+- `fix`
+- `docs`
+- `refactor`
+- `test`
+- `chore`
+- `ci`
+- `build`
+- `perf`
+- `revert`
 
-    const result = processPayment(payment, account);
+Use `!` in the header or a `BREAKING CHANGE:` footer for breaking changes.
 
-    expect(result.success).toBe(false);
-    expect(result.error.message).toBe("Insufficient funds");
-  });
+Examples:
 
-  it("should process valid payment successfully", () => {
-    const payment = getMockPaymentPostPaymentRequest({ amount: 100 });
-    const account = getMockAccount({ balance: 500 });
-
-    const result = processPayment(payment, account);
-
-    expect(result.success).toBe(true);
-    expect(result.data.remainingBalance).toBe(400);
-  });
-});
-
-// Avoid - testing implementation details
-describe("PaymentProcessor", () => {
-  it("should call checkBalance method", () => {
-    // This tests implementation, not behavior
-  });
-});
+```text
+feat(auth): add session refresh endpoint
+fix(payments): reject negative payment amounts
+test(api): cover expired token handling
+docs: update local setup instructions
 ```
 
----
+## Infrastructure, data, and deployment
 
-## 🚫 Common Patterns to Avoid (Anti-Patterns)
+### Infrastructure as code
 
-- Deep nesting and complex conditionals.
-- Large multi-responsibility functions/components.
-- Copying server state into local state stores without clear need.
-- Silent error handling or catch-and-ignore blocks.
-- Tests tightly coupled to implementation details.
+All infrastructure must be defined as code.
 
-```typescript
-// Avoid: Mutation
+Manual console changes are prohibited.
+
+Infrastructure changes must be reviewed via PR and applied via CI/CD.
+
+### Database migrations
+
+All schema changes must use versioned migrations.
+
+Manual SQL changes in production are prohibited.
+
+Migrations must include rollback or recovery guidance where practical.
+
+### Data access
+
+Use the repo's established data access pattern.
+
+Use an ORM by default where the repo already uses one.
+
+Raw SQL is allowed when necessary, but it must be isolated, parameterised, tested, and reviewed.
+
+## Tooling and enforcement
+
+Formatting, linting, type checking, and tests must run in CI.
+
+CI blocks merges on failure.
+
+Local pre-commit quality checks should run via `lint-staged` or equivalent tooling where practical.
+
+Standards are enforceable, not advisory.
+
+## Common patterns to avoid
+
+Avoid:
+
+- deep nesting and complex conditionals
+- large multi-responsibility functions/components
+- copying server state into local state stores without clear need
+- silent error handling or catch-and-ignore blocks
+- tests tightly coupled to implementation details
+- introducing new dependencies without checking existing patterns
+- large unrelated rewrites
+- clever abstractions that make the code harder to read
+
+Avoid mutation when immutable updates are clearer:
+
+```ts
 const addItem = (items: Item[], newItem: Item) => {
-  items.push(newItem);
-  return items;
-};
+  items.push(newItem)
+  return items
+}
+```
 
-// Prefer: Immutable update
-const addItemImmutable = (items: Item[], newItem: Item): Item[] => {
-  return [...items, newItem];
-};
+Prefer:
 
-// Avoid: Nested conditionals
+```ts
+const addItem = (items: Item[], newItem: Item): Item[] => {
+  return [...items, newItem]
+}
+```
+
+Avoid nested conditionals:
+
+```ts
 if (user) {
   if (user.isActive) {
     if (user.hasPermission) {
@@ -979,44 +779,33 @@ if (user) {
     }
   }
 }
-
-// Prefer: Early returns
-if (!user || !user.isActive || !user.hasPermission) {
-  return;
-}
-// do something
-
-// Avoid: Large functions
-const processOrder = (order: Order) => {
-  // 100+ lines of code
-};
-
-// Prefer: Composed small functions
-const processOrderComposed = (order: Order) => {
-  const validatedOrder = validateOrder(order);
-  const pricedOrder = calculatePricing(validatedOrder);
-  const finalOrder = applyDiscounts(pricedOrder);
-  return submitOrder(finalOrder);
-};
 ```
 
----
+Prefer guard clauses:
 
-## 🧩 Reference Patterns (Minimal)
+```ts
+if (!user || !user.isActive || !user.hasPermission) {
+  return
+}
 
-### Boundary Validation (TypeScript)
+// do something
+```
+
+## Reference patterns
+
+### Boundary validation - TypeScript
 
 ```ts
 const CreateUserInput = z.object({
   email: z.string().email(),
   name: z.string().min(1),
-});
+})
 
-const input = CreateUserInput.parse(request.body);
-await createUser(input);
+const input = CreateUserInput.parse(request.body)
+await createUser(input)
 ```
 
-### Route -> Application -> Domain (Python)
+### Route to application to domain - Python
 
 ```py
 @router.post("/users")
@@ -1032,27 +821,29 @@ class UserService:
         return UserDTO.from_domain(user)
 ```
 
-### React Component Shape
+### React component shape
 
 ```tsx
-import { useAccountQuery } from "@hooks/use-account-query";
+import { useAccountQuery } from '@hooks/use-account-query'
 
 export default function AccountPanel() {
-  const { data, isLoading, error } = useAccountQuery();
+  const { data, isLoading, error } = useAccountQuery()
 
-  if (isLoading) return <Spinner />;
-  if (error) return <ErrorState />;
+  if (isLoading) return <Spinner />
+  if (error) return <ErrorState />
 
-  return <AccountView account={data} />;
+  return <AccountView account={data} />
 }
 ```
 
----
+## Documentation philosophy
 
-## 📝 Documentation Philosophy
+Good documentation starts with well-written code.
 
-We believe that good documentation starts with well-written code. Documentation should complement the code, not replace it.
+Documentation should complement the code, not replace it.
 
-If your code is clean, well-structured, and follows best practices, it will be easier to understand and maintain.
+Write documentation for future developers who were not present when the code was first written.
 
-We write documentation not for ourselves or our current team, but for future developers who were not there when we first wrote this code. Documentation is a living document that should be updated as the code changes.
+Documentation is a living artefact and should be updated as the code changes.
+
+Prefer concise documentation that explains intent, trade-offs, operation, and maintenance concerns.
